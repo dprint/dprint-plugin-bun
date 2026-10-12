@@ -155,6 +155,48 @@ fn should_have_diagnostics_for_invalid_config() {
 }
 
 #[test]
+fn should_not_have_diagnostics_for_the_defaults() {
+  let schema: serde_json::Value = serde_json::from_str(include_str!("../deployment/schema.json")).unwrap();
+  let defaults = schema["properties"]
+    .as_object()
+    .unwrap()
+    .iter()
+    .filter(|(name, _)| *name != "$schema")
+    .filter_map(|(name, property)| Some((name.clone(), property.get("default")?.clone())))
+    .collect::<serde_json::Map<_, _>>();
+  assert!(defaults.contains_key("importOrderSeparation"));
+
+  // every option at once, and each one on its own
+  let mut configs = vec![defaults.clone()];
+  configs.extend(
+    defaults
+      .iter()
+      .map(|(name, value)| [(name.clone(), value.clone())].into_iter().collect()),
+  );
+  for mut config in configs {
+    for flavor in ["prettier", "oxfmt"] {
+      config.insert("flavor".to_string(), flavor.into());
+      let config = serde_json::Value::Object(config.clone());
+      let result = resolve(config.clone());
+      assert!(
+        result.diagnostics.is_empty(),
+        "{config}: {}",
+        result.diagnostics[0].message
+      );
+      let text = format_text(&PathBuf::from("file.ts"), "const   a = 1", &result.config).unwrap();
+      assert_eq!(
+        text.as_deref(),
+        Some(
+          "const a = 1;
+"
+        ),
+        "{config}"
+      );
+    }
+  }
+}
+
+#[test]
 fn should_have_diagnostics_for_what_bun_refuses() {
   for (config, property_name, message) in [
     (
@@ -230,17 +272,53 @@ fn should_omit_the_final_newline_for_oxfmt() {
 }
 
 #[test]
-fn should_only_format_toml_for_oxfmt() {
-  let path = PathBuf::from("file.toml");
-  let config = Configuration::default();
-  assert!(!file_extensions(&config).contains(&"toml".to_string()));
-  assert_eq!(format_text(&path, "a=1\n", &config).unwrap(), None);
+fn should_format_toml_for_every_flavor() {
+  for config in [
+    serde_json::json!({}),
+    serde_json::json!({ "flavor": "prettier" }),
+    serde_json::json!({ "flavor": "oxfmt" }),
+    // options that oxfmt does not have, which TOML is not formatted with
+    serde_json::json!({ "parser": "babel", "experimentalTernaries": true, "endOfLine": "auto" }),
+  ] {
+    let config = resolve(config).config;
+    assert!(file_extensions(&config).contains(&"toml".to_string()));
+    assert!(file_names(&config).contains(&"Pipfile".to_string()));
+    for file_name in ["file.toml", "Pipfile"] {
+      assert_eq!(
+        format_text(&PathBuf::from(file_name), "a=1\n", &config)
+          .unwrap()
+          .as_deref(),
+        Some("a = 1\n"),
+        "{file_name}"
+      );
+    }
+  }
+}
 
-  let config = resolve(serde_json::json!({ "flavor": "oxfmt" })).config;
-  assert!(file_extensions(&config).contains(&"toml".to_string()));
+#[test]
+fn should_format_toml_with_the_options_of_prettier() {
+  let path = PathBuf::from("file.toml");
+  let text = "a = [\"aaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"bbbbbbbbbbbbbbbbbbbbbbbbbbbb\", \"cccccccccccccccccccccccc\"]\n";
+  // the text is 94 wide: lines are 80 wide by default, and not the 100 of oxfmt
+  let config = Configuration::default();
   assert_eq!(
-    format_text(&path, "a=1\n", &config).unwrap().as_deref(),
-    Some("a = 1\n")
+    format_text(&path, text, &config).unwrap().as_deref(),
+    Some(
+      "a = [\n  \"aaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n  \"bbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"cccccccccccccccccccccccc\",\n]\n"
+    )
+  );
+  let config = resolve(serde_json::json!({ "flavor": "oxfmt" })).config;
+  assert_eq!(format_text(&path, text, &config).unwrap(), None);
+
+  let config = resolve(serde_json::json!({ "printWidth": 100 })).config;
+  assert_eq!(format_text(&path, text, &config).unwrap(), None);
+
+  let config = resolve(serde_json::json!({ "useTabs": true, "trailingComma": "none", "endOfLine": "crlf" })).config;
+  assert_eq!(
+    format_text(&path, text, &config).unwrap().as_deref(),
+    Some(
+      "a = [\r\n\t\"aaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\r\n\t\"bbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\r\n\t\"cccccccccccccccccccccccc\"\r\n]\r\n"
+    )
   );
 }
 
@@ -308,18 +386,16 @@ fn should_not_match_files_of_each_disabled_language() {
 }
 
 #[test]
-fn should_not_enable_toml_for_prettier() {
-  let config = resolve(serde_json::json!({ "toml.enabled": true }));
-  assert!(config.diagnostics.is_empty());
-  assert!(!file_extensions(&config.config).contains(&"toml".to_string()));
-
-  let config = resolve(serde_json::json!({ "flavor": "oxfmt", "toml.enabled": false })).config;
-  assert!(!file_extensions(&config).contains(&"toml".to_string()));
-  assert!(!file_names(&config).contains(&"Pipfile".to_string()));
-  assert_eq!(
-    format_text(&PathBuf::from("file.toml"), "a=1\n", &config).unwrap(),
-    None
-  );
+fn should_not_format_toml_when_disabled() {
+  for flavor in ["prettier", "oxfmt"] {
+    let config = resolve(serde_json::json!({ "flavor": flavor, "toml.enabled": false })).config;
+    assert!(!file_extensions(&config).contains(&"toml".to_string()));
+    assert!(!file_names(&config).contains(&"Pipfile".to_string()));
+    assert_eq!(
+      format_text(&PathBuf::from("file.toml"), "a=1\n", &config).unwrap(),
+      None
+    );
+  }
 }
 
 fn resolve(config: serde_json::Value) -> ResolveConfigurationResult<Configuration> {

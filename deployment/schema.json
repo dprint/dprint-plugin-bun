@@ -14,7 +14,7 @@
         },
         {
           "const": "oxfmt",
-          "description": "oxfmt: lines are 100 wide by default, `package.json` files are sorted, and TOML is formatted."
+          "description": "oxfmt: lines are 100 wide by default and `package.json` files are sorted."
         }
       ]
     },
@@ -328,7 +328,7 @@
       "default": true
     },
     "toml.enabled": {
-      "description": "Whether to format TOML files. They are only formatted with the flavor \"oxfmt\".",
+      "description": "Whether to format TOML files, which are formatted the way oxfmt formats them with every flavor.",
       "type": "boolean",
       "default": true
     },

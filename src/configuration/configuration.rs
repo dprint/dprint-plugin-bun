@@ -45,10 +45,6 @@ impl Configuration {
   /// Gets if the files of the language are formatted, which is the case
   /// unless the language was turned off with its `<language>.enabled` option.
   pub fn is_language_enabled(&self, language: Language) -> bool {
-    // Bun only formats TOML the way oxfmt does, which Prettier has no way for
-    if language == Language::Toml && self.flavor != Some(Flavor::Oxfmt) {
-      return false;
-    }
     !self.disabled_languages.contains(&language)
   }
 }

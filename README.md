@@ -16,7 +16,7 @@ Adapter for the formatter of [Bun](https://github.com/oven-sh/bun) (`bun format`
 - Markdown and MDX
 - HTML, Vue, and MJML
 - Handlebars
-- TOML (with the flavor `"oxfmt"`)
+- TOML
 
 Code embedded in these is formatted too (ex. CSS in a JS template literal, code blocks in Markdown, or the scripts and styles of an HTML or Vue file).
 
@@ -66,7 +66,7 @@ Every language is formatted by default. To have the plugin leave the files of a 
 }
 ```
 
-The languages are `javascript`, `typescript`, `json`, `jsonc`, `json5`, `css`, `scss`, `less`, `yaml`, `markdown`, `mdx`, `graphql`, `handlebars`, `html`, `vue`, `mjml`, and `toml`. JSX is part of `javascript` and TSX is part of `typescript`. TOML is only formatted with `"flavor": "oxfmt"`, whatever `toml.enabled` is.
+The languages are `javascript`, `typescript`, `json`, `jsonc`, `json5`, `css`, `scss`, `less`, `yaml`, `markdown`, `mdx`, `graphql`, `handlebars`, `html`, `vue`, `mjml`, and `toml`. JSX is part of `javascript` and TSX is part of `typescript`. Prettier has no TOML, so it is formatted the way oxfmt formats it with every flavor.
 
 A disabled language's files are no longer matched by this plugin, so dprint formats them with the next plugin that matches them, if any. This only decides which files are formatted: code embedded in a file of an enabled language is still formatted (ex. CSS in a JS template literal when `css.enabled` is `false`).
 
@@ -97,7 +97,7 @@ As in `bun format`, the three plugins of Prettier that sort imports are built in
 
 ### The flavor of oxfmt
 
-With `"flavor": "oxfmt"` the plugin prints what [oxfmt](https://oxc.rs/docs/guide/usage/formatter) prints where that is not what Prettier prints, and has the options of oxfmt: lines are 100 wide by default, `package.json` files are sorted (`sortPackageJson`), TOML is formatted, and `sortImports`, `jsdoc` and `insertFinalNewline` are available.
+With `"flavor": "oxfmt"` the plugin prints what [oxfmt](https://oxc.rs/docs/guide/usage/formatter) prints where that is not what Prettier prints, and has the options of oxfmt: lines are 100 wide by default, `package.json` files are sorted (`sortPackageJson`), and `sortImports`, `jsdoc` and `insertFinalNewline` are available.
 
 ```jsonc
 {
