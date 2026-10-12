@@ -21,6 +21,8 @@ pub fn build_bun_config(config: &Configuration) -> BunConfig {
   };
   // the flavor is what kind of file it is, and an option that is not set is not in one
   options.remove("flavor");
+  // which files are formatted is up to the plugin
+  options.remove("disabledLanguages");
   options.retain(|_, value| !value.is_null());
   BunConfig {
     json: Value::Object(options).to_string(),

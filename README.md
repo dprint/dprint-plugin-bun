@@ -20,7 +20,7 @@ Adapter for the formatter of [Bun](https://github.com/oven-sh/bun) (`bun format`
 
 Code embedded in these is formatted too (ex. CSS in a JS template literal, code blocks in Markdown, or the scripts and styles of an HTML or Vue file).
 
-If you only want to use this plugin for some of these languages, list the plugins you want to format the other languages before this one in your dprint.json, since dprint formats a file with the first plugin that matches it.
+If you only want to use this plugin for some of these languages, [disable the other languages](#disabling-languages).
 
 ## Install
 
@@ -52,6 +52,23 @@ To add configuration, specify a `"bun"` key in your dprint.json:
 ```
 
 The options are the ones that `bun format` reads in a configuration file, with the same names and values: [Prettier's options](https://prettier.io/docs/options), or with `"flavor": "oxfmt"` the ones of an `.oxfmtrc.json`. For an overview of the config, see https://dprint.dev/plugins/bun/config/
+
+### Disabling languages
+
+Every language is formatted by default. To have the plugin leave the files of a language alone, set its `<language>.enabled` option to `false`:
+
+```jsonc
+{
+  "bun": {
+    "markdown.enabled": false,
+    "yaml.enabled": false,
+  },
+}
+```
+
+The languages are `javascript`, `typescript`, `json`, `jsonc`, `json5`, `css`, `scss`, `less`, `yaml`, `markdown`, `mdx`, `graphql`, `handlebars`, `html`, `vue`, `mjml`, and `toml`. JSX is part of `javascript` and TSX is part of `typescript`. TOML is only formatted with `"flavor": "oxfmt"`, whatever `toml.enabled` is.
+
+A disabled language's files are no longer matched by this plugin, so dprint formats them with the next plugin that matches them, if any. This only decides which files are formatted: code embedded in a file of an enabled language is still formatted (ex. CSS in a JS template literal when `css.enabled` is `false`).
 
 Note: The plugin does not read a `.prettierrc`, an `.oxfmtrc.json`, an `.editorconfig`, a `tsconfig.json`, or a `bunfig.toml` because it runs sandboxed in a Wasm runtime—it has no access to the file system.
 
