@@ -86,6 +86,50 @@ pub unsafe extern "C" fn highway_memrmem(
   memchr::memmem::rfind(text, needle).unwrap_or(usize::MAX)
 }
 
+/// The index at which the first `needle` starts in UTF-16, or `usize::MAX`.
+///
+/// # Safety
+/// Both ranges have to be valid for reads.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn highway_memmem16(
+  haystack: *const u16,
+  haystack_len: usize,
+  needle: *const u16,
+  needle_len: usize,
+) -> usize {
+  // SAFETY: the caller guarantees the ranges
+  let (text, needle) = unsafe { (units(haystack, haystack_len), units(needle, needle_len)) };
+  if needle.is_empty() {
+    return 0;
+  }
+  text
+    .windows(needle.len())
+    .position(|window| window == needle)
+    .unwrap_or(usize::MAX)
+}
+
+/// The index at which the last `needle` starts in UTF-16, or `usize::MAX`.
+///
+/// # Safety
+/// Both ranges have to be valid for reads.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn highway_memrmem16(
+  haystack: *const u16,
+  haystack_len: usize,
+  needle: *const u16,
+  needle_len: usize,
+) -> usize {
+  // SAFETY: the caller guarantees the ranges
+  let (text, needle) = unsafe { (units(haystack, haystack_len), units(needle, needle_len)) };
+  if needle.is_empty() {
+    return text.len();
+  }
+  text
+    .windows(needle.len())
+    .rposition(|window| window == needle)
+    .unwrap_or(usize::MAX)
+}
+
 /// The index of the first byte of a string literal that is not just a part of
 /// it, or the length: the quote, a backslash, and what is not printable ASCII.
 ///
@@ -162,6 +206,13 @@ pub unsafe extern "C" fn highway_last_index_of_any_char(
 /// # Safety
 /// `pointer` has to be valid for reads of `len` bytes, or `len` zero.
 unsafe fn bytes<'a>(pointer: *const u8, len: usize) -> &'a [u8] {
+  // SAFETY: the caller guarantees the range
+  unsafe { units(pointer, len) }
+}
+
+/// # Safety
+/// `pointer` has to be valid for reads of `len` units, or `len` zero.
+unsafe fn units<'a, T>(pointer: *const T, len: usize) -> &'a [T] {
   if len == 0 {
     return &[];
   }

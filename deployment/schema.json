@@ -3,8 +3,23 @@
   "$id": "https://plugins.dprint.dev/dprint/dprint-plugin-bun/0.0.0/schema.json",
   "type": "object",
   "properties": {
+    "flavor": {
+      "description": "Whose formatter Bun stands in for: the options are the ones of its configuration file, and the output is its output where the two differ.",
+      "type": "string",
+      "default": "prettier",
+      "oneOf": [
+        {
+          "const": "prettier",
+          "description": "Prettier."
+        },
+        {
+          "const": "oxfmt",
+          "description": "oxfmt: lines are 100 wide by default, `package.json` files are sorted, and TOML is formatted."
+        }
+      ]
+    },
     "printWidth": {
-      "description": "The line width that the formatter wraps at. Defaults to the `lineWidth` of the global configuration.",
+      "description": "The line width that the formatter wraps at. Defaults to the `lineWidth` of the global configuration, and to 100 with the flavor \"oxfmt\".",
       "default": 80,
       "type": "number"
     },
@@ -231,6 +246,247 @@
       "description": "Whether to not format the files that have a `@noformat` or `@noprettier` comment at the top.",
       "type": "boolean",
       "default": false
+    },
+    "parser": {
+      "description": "The parser of Prettier to read every file with, whatever its name. Example: `json5`. Not for the flavor \"oxfmt\".",
+      "type": "string"
+    },
+    "plugins": {
+      "description": "The plugins of Prettier that sort imports to sort imports like. They are built in, and do not have to be installed. No other plugin can be used.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "@trivago/prettier-plugin-sort-imports",
+          "@ianvs/prettier-plugin-sort-imports",
+          "prettier-plugin-organize-imports"
+        ]
+      }
+    },
+    "importOrder": {
+      "description": "The order of the groups of imports, as regular expressions that the module specifiers are matched against, and special words like `<THIRD_PARTY_MODULES>`. Only with one of the two `prettier-plugin-sort-imports` in `plugins`.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "importOrderParserPlugins": {
+      "description": "Accepted and not needed: TypeScript, JSX and decorators are read in every file.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "importOrderSeparation": {
+      "description": "Whether to have an empty line between the groups of imports. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
+      "type": "boolean",
+      "default": false
+    },
+    "importOrderSortSpecifiers": {
+      "description": "Whether to sort the specifiers of an import. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
+      "type": "boolean",
+      "default": false
+    },
+    "importOrderGroupNamespaceSpecifiers": {
+      "description": "Whether to put the imports of a namespace at the top of their group. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
+      "type": "boolean",
+      "default": false
+    },
+    "importOrderCaseInsensitive": {
+      "description": "Whether to sort without regard to case. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
+      "type": "boolean",
+      "default": false
+    },
+    "importOrderSideEffects": {
+      "description": "Whether to sort the imports that are only for their side effects. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
+      "type": "boolean",
+      "default": true
+    },
+    "importOrderSortByLength": {
+      "description": "Whether to sort the imports by their length. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
+      "enum": [
+        "asc",
+        "desc",
+        null
+      ],
+      "default": null
+    },
+    "importOrderImportAttributesKeyword": {
+      "description": "The keyword that import attributes are written with. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
+      "type": "string",
+      "enum": [
+        "assert",
+        "with",
+        "with-legacy"
+      ]
+    },
+    "importOrderExclude": {
+      "description": "Glob patterns of the files whose imports are left as they are. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "importOrderTypeScriptVersion": {
+      "description": "The version of TypeScript of the project, which decides how the imports of types are written. Only with `@ianvs/prettier-plugin-sort-imports` in `plugins`.",
+      "type": "string",
+      "default": "1.0.0"
+    },
+    "importOrderCaseSensitive": {
+      "description": "Whether to sort with regard to case. Only with `@ianvs/prettier-plugin-sort-imports` in `plugins`.",
+      "type": "boolean",
+      "default": false
+    },
+    "importOrderSafeSideEffects": {
+      "description": "Patterns of the imports for side effects that can be sorted with the others. Only with `@ianvs/prettier-plugin-sort-imports` in `plugins`.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "organizeImportsSkipDestructiveCodeActions": {
+      "description": "Whether to keep the imports that are not used. Only with `prettier-plugin-organize-imports` in `plugins`.",
+      "type": "boolean",
+      "default": false
+    },
+    "organizeImportsTypeOrder": {
+      "description": "Where the specifiers that are types are put among the others. Only with `prettier-plugin-organize-imports` in `plugins`.",
+      "type": "string",
+      "enum": [
+        "last",
+        "first",
+        "inline"
+      ]
+    },
+    "tsconfig.jsx": {
+      "description": "The `jsx` of the `compilerOptions` of the project, which says whether JSX uses the import of `React`. The plugin cannot read the tsconfig.json itself. Only with `prettier-plugin-organize-imports` in `plugins`.",
+      "type": "string"
+    },
+    "tsconfig.jsxFactory": {
+      "description": "The `jsxFactory` of the `compilerOptions` of the project. Only with `prettier-plugin-organize-imports` in `plugins`.",
+      "type": "string"
+    },
+    "tsconfig.jsxFragmentFactory": {
+      "description": "The `jsxFragmentFactory` of the `compilerOptions` of the project. Only with `prettier-plugin-organize-imports` in `plugins`.",
+      "type": "string"
+    },
+    "tsconfig.reactNamespace": {
+      "description": "The `reactNamespace` of the `compilerOptions` of the project. Only with `prettier-plugin-organize-imports` in `plugins`.",
+      "type": "string"
+    },
+    "sortImports": {
+      "description": "Whether and how to sort imports the way oxfmt does, with the options that `sortImports` has in an `.oxfmtrc.json`. Only with the flavor \"oxfmt\".",
+      "default": false,
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "sortPackageJson": {
+      "description": "Whether to sort the keys of `package.json` files. Only with the flavor \"oxfmt\".",
+      "default": true,
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sortScripts": {
+              "description": "Whether to sort the scripts as well.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      ]
+    },
+    "jsdoc": {
+      "description": "Whether and how to format JSDoc comments, the way prettier-plugin-jsdoc does. Only with the flavor \"oxfmt\".",
+      "default": false,
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "capitalizeDescriptions": {
+              "description": "Whether to make the first letter of a description a capital one.",
+              "type": "boolean",
+              "default": true
+            },
+            "commentLineStrategy": {
+              "description": "Whether a comment that fits on one line is written on one.",
+              "type": "string",
+              "enum": [
+                "singleLine",
+                "multiline",
+                "keep"
+              ],
+              "default": "singleLine"
+            },
+            "separateTagGroups": {
+              "description": "Whether to have an empty line between tags of different kinds.",
+              "type": "boolean",
+              "default": false
+            },
+            "separateReturnsFromParam": {
+              "description": "Whether to have an empty line between the last `@param` and `@returns`.",
+              "type": "boolean",
+              "default": false
+            },
+            "bracketSpacing": {
+              "description": "Whether to write `{ string }` instead of `{string}`.",
+              "type": "boolean",
+              "default": false
+            },
+            "descriptionWithDot": {
+              "description": "Whether to end a description with a dot.",
+              "type": "boolean",
+              "default": false
+            },
+            "addDefaultToDescription": {
+              "description": "Whether to add \"Default is `value`\" to the description of a parameter with a default.",
+              "type": "boolean",
+              "default": true
+            },
+            "preferCodeFences": {
+              "description": "Whether to put code without a language between fences instead of indenting it.",
+              "type": "boolean",
+              "default": false
+            },
+            "lineWrappingStyle": {
+              "description": "How the lines of a description are wrapped.",
+              "type": "string",
+              "enum": [
+                "greedy",
+                "balance"
+              ],
+              "default": "greedy"
+            },
+            "descriptionTag": {
+              "description": "Whether to put the description after `@description`.",
+              "type": "boolean",
+              "default": false
+            },
+            "keepUnparsableExampleIndent": {
+              "description": "Whether an `@example` that cannot be parsed keeps its indentation.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      ]
+    },
+    "insertFinalNewline": {
+      "description": "Whether to end a file with a line break. Only with the flavor \"oxfmt\".",
+      "type": "boolean",
+      "default": true
     }
   }
 }

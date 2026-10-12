@@ -2,11 +2,13 @@ use dprint_core::configuration::ParseConfigurationError;
 use dprint_core::generate_str_to_from;
 use serde::{Deserialize, Serialize};
 
-/// The options of `bun format`, which are the ones of Prettier with the same
-/// names. An option that is not set has the default of `bun format`.
+/// The options of `bun format`, which are the ones of a configuration file of
+/// Prettier, or of oxfmt with that flavor, with the same names and values. An
+/// option that is not set has the default of `bun format`.
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Configuration {
+  pub flavor: Option<Flavor>,
   pub print_width: Option<u32>,
   pub tab_width: Option<u8>,
   pub use_tabs: Option<bool>,
@@ -30,7 +32,21 @@ pub struct Configuration {
   pub insert_pragma: Option<bool>,
   pub require_pragma: Option<bool>,
   pub check_ignore_pragma: Option<bool>,
+  /// The options that Bun reads as they are written: the ones that are about
+  /// the order of imports and the ones of oxfmt.
+  #[serde(flatten)]
+  pub other: serde_json::Map<String, serde_json::Value>,
 }
+
+/// Whose output to produce where the two differ, and whose options there are.
+#[derive(Clone, PartialEq, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Flavor {
+  Prettier,
+  Oxfmt,
+}
+
+generate_str_to_from![Flavor, [Prettier, "prettier"], [Oxfmt, "oxfmt"]];
 
 #[derive(Clone, PartialEq, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

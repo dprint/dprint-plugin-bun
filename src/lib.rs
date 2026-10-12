@@ -7,6 +7,7 @@ mod shims;
 pub use file_matching::file_extensions;
 pub use file_matching::file_names;
 
+pub use format_text::format_range;
 pub use format_text::format_text;
 
 #[cfg(feature = "wasm")]

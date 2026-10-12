@@ -26,8 +26,8 @@ impl SyncPluginHandler<Configuration> for BunPluginHandler {
     let result = resolve_config(config, global_config);
     PluginResolveConfigurationResult {
       file_matching: FileMatchingInfo {
-        file_extensions: crate::file_extensions(),
-        file_names: crate::file_names(),
+        file_extensions: crate::file_extensions(&result.config),
+        file_names: crate::file_names(&result.config),
         additive: false,
       },
       config: result.config,
@@ -63,12 +63,8 @@ impl SyncPluginHandler<Configuration> for BunPluginHandler {
     request: SyncFormatRequest<Configuration>,
     _format_with_host: impl FnMut(SyncHostFormatRequest) -> FormatResult,
   ) -> FormatResult {
-    if request.range.is_some() {
-      return Ok(None); // not implemented
-    }
-
     let text = String::from_utf8_lossy(&request.file_bytes);
-    let maybe_text = super::format_text(request.file_path, &text, request.config)?;
+    let maybe_text = super::format_range(request.file_path, &text, request.range, request.config)?;
     Ok(maybe_text.map(|t| t.into_bytes()))
   }
 }

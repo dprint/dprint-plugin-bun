@@ -22,6 +22,7 @@ for (
     ["file.html", "<div><p>a</p></div>", "<div><p>a</p></div>\n"],
     ["file.vue", "<script>\nconst   a=1\n</script>\n", "<script>\nconst a = 1;\n</script>\n"],
     ["file.ts", "const a = css`a{b:c}`;", "const a = css`\n  a {\n    b: c;\n  }\n`;\n"],
+    ["file.hbs", "<div   class=\"a\"></div>", "<div class=\"a\"></div>"],
     // nested deep enough to need most of the stack
     ["file.js", "a(".repeat(500) + ")".repeat(500), null],
   ]
@@ -31,6 +32,18 @@ for (
     assert.strictEqual(actual, expected, filePath);
   }
 }
+
+// the regular expressions and the collation that sorting imports needs
+const sorting = createFromBuffer(getBuffer());
+sorting.setConfig({}, {
+  plugins: ["@ianvs/prettier-plugin-sort-imports"],
+  importOrder: ["<THIRD_PARTY_MODULES>", "", "^[./]"],
+});
+assert.deepStrictEqual(sorting.getConfigDiagnostics(), []);
+assert.strictEqual(
+  sorting.formatText({ filePath: "file.ts", fileText: "import b from \"./b\";\nimport a from \"a\";\n" }),
+  "import a from \"a\";\n\nimport b from \"./b\";\n",
+);
 
 // a syntax error is an error with where it is
 assert.throws(

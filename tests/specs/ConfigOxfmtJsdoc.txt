@@ -1,0 +1,19 @@
+~~ {"flavor":"oxfmt","jsdoc":true} ~~
+== should format ==
+/**
+ * does a thing
+ * @param {string}   a   the first
+ * @returns {number}
+ */
+function f(a) { return 1 }
+
+[expect]
+/**
+ * Does a thing
+ *
+ * @param {string} a The first
+ * @returns {number}
+ */
+function f(a) {
+  return 1;
+}

@@ -1,5 +1,7 @@
 use super::Configuration;
 use super::EndOfLine;
+use crate::options::build_bun_config;
+use bun_lint_driver::fmt::check_config_for_plugin;
 use dprint_core::configuration::*;
 
 /// Resolves configuration from a collection of key value strings.
@@ -31,6 +33,7 @@ pub fn resolve_config(
   let mut config = config;
 
   let resolved_config = Configuration {
+    flavor: get_nullable_value(&mut config, "flavor", &mut diagnostics),
     print_width: get_nullable_value(&mut config, "printWidth", &mut diagnostics).or(global_config.line_width),
     tab_width: get_nullable_value(&mut config, "tabWidth", &mut diagnostics).or(global_config.indent_width),
     use_tabs: get_nullable_value(&mut config, "useTabs", &mut diagnostics).or(global_config.use_tabs),
@@ -59,12 +62,99 @@ pub fn resolve_config(
     insert_pragma: get_nullable_value(&mut config, "insertPragma", &mut diagnostics),
     require_pragma: get_nullable_value(&mut config, "requirePragma", &mut diagnostics),
     check_ignore_pragma: get_nullable_value(&mut config, "checkIgnorePragma", &mut diagnostics),
+    other: take_other_options(&mut config),
   };
 
   diagnostics.extend(get_unknown_property_diagnostics(config));
+
+  // Bun says what is wrong with the options that it reads as they are written
+  if diagnostics.is_empty() {
+    let bun_config = build_bun_config(&resolved_config);
+    if let Err(message) = check_config_for_plugin(bun_config.json.as_bytes(), bun_config.is_oxfmt) {
+      diagnostics.push(ConfigurationDiagnostic {
+        property_name: property_name_in(&message, &resolved_config).to_string(),
+        message: String::from_utf8_lossy(&message).into_owned(),
+      });
+    }
+  }
 
   ResolveConfigurationResult {
     config: resolved_config,
     diagnostics,
   }
+}
+
+/// The options that Bun reads as they are written in a configuration file.
+const OTHER_OPTIONS: &[&str] = &[
+  "parser",
+  // which of the plugins of Prettier that sort imports to sort like
+  "plugins",
+  // @trivago/prettier-plugin-sort-imports and @ianvs/prettier-plugin-sort-imports
+  "importOrder",
+  "importOrderParserPlugins",
+  "importOrderSeparation",
+  "importOrderSortSpecifiers",
+  "importOrderGroupNamespaceSpecifiers",
+  "importOrderCaseInsensitive",
+  "importOrderSideEffects",
+  "importOrderSortByLength",
+  "importOrderImportAttributesKeyword",
+  "importOrderExclude",
+  "importOrderTypeScriptVersion",
+  "importOrderCaseSensitive",
+  "importOrderSafeSideEffects",
+  // prettier-plugin-organize-imports, and what it reads in a tsconfig.json
+  "organizeImportsSkipDestructiveCodeActions",
+  "organizeImportsTypeOrder",
+  "tsconfig.jsx",
+  "tsconfig.jsxFactory",
+  "tsconfig.jsxFragmentFactory",
+  "tsconfig.reactNamespace",
+  // oxfmt
+  "sortImports",
+  "experimentalSortImports",
+  "sortPackageJson",
+  "experimentalSortPackageJson",
+  "jsdoc",
+  "insertFinalNewline",
+  "sortTailwindcss",
+  "experimentalTailwindcss",
+];
+
+fn take_other_options(config: &mut ConfigKeyMap) -> serde_json::Map<String, serde_json::Value> {
+  let mut options = serde_json::Map::new();
+  for name in OTHER_OPTIONS {
+    match config.shift_remove(*name) {
+      Some(ConfigKeyValue::Null) | None => {}
+      Some(value) => {
+        options.insert(name.to_string(), to_json(value));
+      }
+    }
+  }
+  options
+}
+
+fn to_json(value: ConfigKeyValue) -> serde_json::Value {
+  match value {
+    ConfigKeyValue::String(value) => value.into(),
+    ConfigKeyValue::Number(value) => value.into(),
+    ConfigKeyValue::Bool(value) => value.into(),
+    ConfigKeyValue::Array(values) => values.into_iter().map(to_json).collect(),
+    ConfigKeyValue::Object(values) => {
+      serde_json::Value::Object(values.into_iter().map(|(name, value)| (name, to_json(value))).collect())
+    }
+    ConfigKeyValue::Null => serde_json::Value::Null,
+  }
+}
+
+/// The option that a message of Bun is about, which names it.
+fn property_name_in<'a>(message: &[u8], config: &'a Configuration) -> &'a str {
+  let message = String::from_utf8_lossy(message);
+  let mut names = config.other.keys().map(String::as_str).collect::<Vec<_>>();
+  // the longest first: `importOrder` is the start of the names of other options
+  names.sort_by_key(|name| std::cmp::Reverse(name.len()));
+  names
+    .into_iter()
+    .find(|name| message.contains(name))
+    .unwrap_or("plugins")
 }

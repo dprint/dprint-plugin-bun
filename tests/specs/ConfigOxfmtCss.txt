@@ -1,0 +1,9 @@
+-- file.css --
+~~ {"flavor":"oxfmt"} ~~
+== should format ==
+a{color:red}
+
+[expect]
+a {
+  color: red;
+}

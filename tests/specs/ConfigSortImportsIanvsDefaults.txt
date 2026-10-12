@@ -1,0 +1,22 @@
+~~ {"plugins":["@ianvs/prettier-plugin-sort-imports"]} ~~
+== should format ==
+import { b, a } from "./util";
+import { db } from "@/db";
+import { z, unused } from "zod";
+import React from "react";
+import { readFile } from "node:fs/promises";
+import type { T } from "./types";
+
+console.log(a, b, db, z, readFile, React);
+let t: T;
+
+[expect]
+import { readFile } from "node:fs/promises";
+import { db } from "@/db";
+import React from "react";
+import { unused, z } from "zod";
+import type { T } from "./types";
+import { a, b } from "./util";
+
+console.log(a, b, db, z, readFile, React);
+let t: T;

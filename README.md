@@ -16,6 +16,7 @@ Adapter for the formatter of [Bun](https://github.com/oven-sh/bun) (`bun format`
 - Markdown and MDX
 - HTML, Vue, and MJML
 - Handlebars
+- TOML (with the flavor `"oxfmt"`)
 
 Code embedded in these is formatted too (ex. CSS in a JS template literal, code blocks in Markdown, or the scripts and styles of an HTML or Vue file).
 
@@ -28,7 +29,7 @@ If you only want to use this plugin for some of these languages, list the plugin
 Then in your project's directory with a dprint.json file, run:
 
 ```shellsession
-dprint config add bun
+dprint add bun
 ```
 
 Note: You do not need Bun installed as dprint will run Bun's formatter from the .wasm file in a sandboxed environment.
@@ -50,9 +51,54 @@ To add configuration, specify a `"bun"` key in your dprint.json:
 }
 ```
 
-The options are the ones of `bun format`, which have the names and the values of [Prettier's options](https://prettier.io/docs/options). For an overview of the config, see https://dprint.dev/plugins/bun/config/
+The options are the ones that `bun format` reads in a configuration file, with the same names and values: [Prettier's options](https://prettier.io/docs/options), or with `"flavor": "oxfmt"` the ones of an `.oxfmtrc.json`. For an overview of the config, see https://dprint.dev/plugins/bun/config/
 
-Note: The plugin does not read a `.prettierrc`, an `.oxfmtrc.json`, an `.editorconfig`, or a `bunfig.toml` because it runs sandboxed in a Wasm runtime—it has no access to the file system. For the same reason it has none of what `bun format` asks installed packages for: sorting imports with a Prettier plugin, sorting the classes of Tailwind CSS, and the languages of Prettier plugins (ex. Svelte and Astro).
+Note: The plugin does not read a `.prettierrc`, an `.oxfmtrc.json`, an `.editorconfig`, a `tsconfig.json`, or a `bunfig.toml` because it runs sandboxed in a Wasm runtime—it has no access to the file system.
+
+### Sorting imports
+
+As in `bun format`, the three plugins of Prettier that sort imports are built in. Name one in `plugins` to sort like it, with its options:
+
+```jsonc
+{
+  "bun": {
+    "plugins": ["@ianvs/prettier-plugin-sort-imports"],
+    "importOrder": [
+      "<BUILTIN_MODULES>",
+      "",
+      "<THIRD_PARTY_MODULES>",
+      "",
+      "^@/(.*)$",
+      "^[./]"
+    ],
+  },
+}
+```
+
+- `@trivago/prettier-plugin-sort-imports` and `@ianvs/prettier-plugin-sort-imports`, with the `importOrder*` options.
+- `prettier-plugin-organize-imports`, which also removes unused imports, with the `organizeImports*` options. It reads the JSX settings of a `tsconfig.json`, which the plugin cannot do, so set them as `tsconfig.jsx`, `tsconfig.jsxFactory`, `tsconfig.jsxFragmentFactory` and `tsconfig.reactNamespace` if a project does not use the defaults.
+
+### The flavor of oxfmt
+
+With `"flavor": "oxfmt"` the plugin prints what [oxfmt](https://oxc.rs/docs/guide/usage/formatter) prints where that is not what Prettier prints, and has the options of oxfmt: lines are 100 wide by default, `package.json` files are sorted (`sortPackageJson`), TOML is formatted, and `sortImports`, `jsdoc` and `insertFinalNewline` are available.
+
+```jsonc
+{
+  "bun": {
+    "flavor": "oxfmt",
+    "sortImports": true,
+    "jsdoc": true,
+  },
+}
+```
+
+### What is not there
+
+These need the file system or JavaScript packages, which a Wasm plugin has neither of:
+
+- `overrides`. Use more than one configuration of dprint instead.
+- `sortTailwindcss`, which asks the `tailwindcss` package of the project for the order of the classes.
+- Plugins of Prettier other than the three above, and so the languages that only a plugin reads (ex. Svelte and Astro).
 
 ## JS Formatting API
 
@@ -83,7 +129,8 @@ cargo build --target wasm32-unknown-unknown --features wasm --release
 What makes Bun's formatter build for Wasm:
 
 - [patches/bun.patch](patches/bun.patch) has the changes to Bun's source that are not made by rule. To change it, edit the files in `vendor/bun` and run `deno task patch`.
+- [patches/entry_points](patches/entry_points) has the functions that the plugin calls, which are added to the modules of the driver of `bun format` because what they call is private there.
 - [shims](shims) has crates that stand in for the `libc` crate and for Bun's crate of system calls.
-- [src/shims](src/shims) has the functions of the C and C++ libraries that Bun's formatter calls (mimalloc, simdutf, Highway, WebKit's number conversion and regular expression engine, and ICU's collator), written in Rust. The order of ICU's collator is only approximated: it is right for ASCII and the letters of Latin-1.
+- [src/shims](src/shims) has the functions of the C and C++ libraries that Bun's formatter calls (mimalloc, simdutf, Highway, WebKit's number conversion and regular expression engine, and ICU's collator), written in Rust. The order of ICU's collator, which sorting imports uses, is only approximated: it is right for ASCII and the letters of Latin-1.
 
 The Wasm module can use at most 512 MiB of memory (see [.cargo/config.toml](.cargo/config.toml)).

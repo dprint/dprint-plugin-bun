@@ -1,0 +1,6 @@
+~~ {"parser":"json"} ~~
+== should format ==
+{"a":1}
+
+[expect]
+{ "a": 1 }

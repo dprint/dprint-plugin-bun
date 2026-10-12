@@ -1,68 +1,29 @@
-use bun_format::FormatOptions;
+use serde_json::Value;
 
 use crate::configuration::Configuration;
+use crate::configuration::Flavor;
 
-/// Gets the options of Bun's formatter for the configuration.
-///
-/// Bun has a setter that takes the names and the values of Prettier's options
-/// as they are written in a configuration file, which is what the
-/// configuration of the plugin has.
-pub fn build_format_options(config: &Configuration) -> Result<FormatOptions, String> {
-  let mut options = FormatOptions::default();
-  let mut set = |name: &str, value: Option<String>| match value {
-    Some(value) => options
-      .set(name.as_bytes(), value.as_bytes())
-      .map_err(|_| format!("Invalid value for the option \"{name}\": {value}")),
-    None => Ok(()),
+/// What Bun is given as the configuration.
+pub struct BunConfig {
+  /// What a configuration file of Prettier or of oxfmt has.
+  pub json: String,
+  pub is_oxfmt: bool,
+}
+
+/// Gets the configuration for Bun, which reads it the way it reads a
+/// configuration file: the options of the plugin have the names and the values
+/// that they have there.
+pub fn build_bun_config(config: &Configuration) -> BunConfig {
+  let is_oxfmt = config.flavor == Some(Flavor::Oxfmt);
+  let mut options = match serde_json::to_value(config) {
+    Ok(Value::Object(options)) => options,
+    _ => unreachable!("the configuration is a map"),
   };
-
-  set("printWidth", config.print_width.map(|value| value.to_string()))?;
-  set("tabWidth", config.tab_width.map(|value| value.to_string()))?;
-  set("useTabs", config.use_tabs.map(|value| value.to_string()))?;
-  set("endOfLine", config.end_of_line.map(|value| value.to_string()))?;
-  set("semi", config.semi.map(|value| value.to_string()))?;
-  set("singleQuote", config.single_quote.map(|value| value.to_string()))?;
-  set("jsxSingleQuote", config.jsx_single_quote.map(|value| value.to_string()))?;
-  set("quoteProps", config.quote_props.map(|value| value.to_string()))?;
-  set("trailingComma", config.trailing_comma.map(|value| value.to_string()))?;
-  set("bracketSpacing", config.bracket_spacing.map(|value| value.to_string()))?;
-  set(
-    "bracketSameLine",
-    config.bracket_same_line.map(|value| value.to_string()),
-  )?;
-  set("arrowParens", config.arrow_parens.map(|value| value.to_string()))?;
-  set("objectWrap", config.object_wrap.map(|value| value.to_string()))?;
-  set(
-    "singleAttributePerLine",
-    config.single_attribute_per_line.map(|value| value.to_string()),
-  )?;
-  set(
-    "experimentalOperatorPosition",
-    config.experimental_operator_position.map(|value| value.to_string()),
-  )?;
-  set(
-    "experimentalTernaries",
-    config.experimental_ternaries.map(|value| value.to_string()),
-  )?;
-  set(
-    "embeddedLanguageFormatting",
-    config.embedded_language_formatting.map(|value| value.to_string()),
-  )?;
-  set("proseWrap", config.prose_wrap.map(|value| value.to_string()))?;
-  set(
-    "htmlWhitespaceSensitivity",
-    config.html_whitespace_sensitivity.map(|value| value.to_string()),
-  )?;
-  set(
-    "vueIndentScriptAndStyle",
-    config.vue_indent_script_and_style.map(|value| value.to_string()),
-  )?;
-  set("insertPragma", config.insert_pragma.map(|value| value.to_string()))?;
-  set("requirePragma", config.require_pragma.map(|value| value.to_string()))?;
-  set(
-    "checkIgnorePragma",
-    config.check_ignore_pragma.map(|value| value.to_string()),
-  )?;
-
-  Ok(options)
+  // the flavor is what kind of file it is, and an option that is not set is not in one
+  options.remove("flavor");
+  options.retain(|_, value| !value.is_null());
+  BunConfig {
+    json: Value::Object(options).to_string(),
+    is_oxfmt,
+  }
 }

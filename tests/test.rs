@@ -95,10 +95,10 @@ fn should_not_format_unknown_files() {
 #[test]
 fn should_format_every_matched_file() {
   let config = Configuration::default();
-  let file_names = file_extensions()
+  let file_names = file_extensions(&config)
     .into_iter()
     .map(|ext| format!("file.{ext}"))
-    .chain(file_names());
+    .chain(file_names(&config));
   for file_name in file_names {
     // text that is valid, and not formatted, in none of the languages
     let result = format_text(&PathBuf::from(&file_name), "{  }\n\n\n", &config);
@@ -150,6 +150,96 @@ fn should_have_diagnostics_for_invalid_config() {
       "{config}"
     );
   }
+}
+
+#[test]
+fn should_have_diagnostics_for_what_bun_refuses() {
+  for (config, property_name, message) in [
+    (
+      serde_json::json!({ "plugins": ["prettier-plugin-svelte"] }),
+      "plugins",
+      "These plugins of Prettier cannot be loaded: prettier-plugin-svelte.",
+    ),
+    (
+      serde_json::json!({ "importOrder": ["^[./]"] }),
+      "importOrder",
+      "importOrder has no effect unless `plugins` names the plugin that it is an option of.",
+    ),
+    (
+      serde_json::json!({ "plugins": ["@trivago/prettier-plugin-sort-imports"], "importOrder": ["("] }),
+      "importOrder",
+      "Invalid regular expression in importOrder: Invalid regular expression: /(/: Unterminated group",
+    ),
+    (
+      serde_json::json!({ "flavor": "oxfmt", "sortTailwindcss": true }),
+      "sortTailwindcss",
+      "sortTailwindcss is not supported: it needs the tailwindcss package of the project.",
+    ),
+    (
+      serde_json::json!({ "flavor": "oxfmt", "jsdoc": { "lineWrappingStyle": "wide" } }),
+      "jsdoc",
+      "Invalid jsdoc.lineWrappingStyle value: wide.",
+    ),
+  ] {
+    let diagnostics = resolve(config.clone()).diagnostics;
+    assert_eq!(
+      diagnostics
+        .iter()
+        .map(|d| (d.property_name.as_str(), d.message.as_str()))
+        .collect::<Vec<_>>(),
+      vec![(property_name, message)],
+      "{config}"
+    );
+  }
+}
+
+#[test]
+fn should_format_a_range() {
+  let config = Configuration::default();
+  let text = "const   a = 1;\nconst   b = 2;\nconst   c = 3;\n";
+  let start = text.find("const   b").unwrap();
+  let result = format_range(
+    &PathBuf::from("file.ts"),
+    text,
+    Some(start..start + "const   b = 2;".len()),
+    &config,
+  )
+  .unwrap();
+  assert_eq!(
+    result.as_deref(),
+    Some("const   a = 1;\nconst b = 2;\nconst   c = 3;\n")
+  );
+}
+
+#[test]
+fn should_format_a_range_after_characters_of_more_than_one_byte() {
+  let config = Configuration::default();
+  let text = "const   a = \"é𝒳\";\nconst   b = 2;\n";
+  let start = text.find("const   b").unwrap();
+  let result = format_range(&PathBuf::from("file.ts"), text, Some(start..text.len()), &config).unwrap();
+  assert_eq!(result.as_deref(), Some("const   a = \"é𝒳\";\nconst b = 2;\n"));
+}
+
+#[test]
+fn should_omit_the_final_newline_for_oxfmt() {
+  let config = resolve(serde_json::json!({ "flavor": "oxfmt", "insertFinalNewline": false })).config;
+  let result = format_text(&PathBuf::from("file.ts"), "const   a = 1\n", &config).unwrap();
+  assert_eq!(result.as_deref(), Some("const a = 1;"));
+}
+
+#[test]
+fn should_only_format_toml_for_oxfmt() {
+  let path = PathBuf::from("file.toml");
+  let config = Configuration::default();
+  assert!(!file_extensions(&config).contains(&"toml".to_string()));
+  assert_eq!(format_text(&path, "a=1\n", &config).unwrap(), None);
+
+  let config = resolve(serde_json::json!({ "flavor": "oxfmt" })).config;
+  assert!(file_extensions(&config).contains(&"toml".to_string()));
+  assert_eq!(
+    format_text(&path, "a=1\n", &config).unwrap().as_deref(),
+    Some("a = 1\n")
+  );
 }
 
 fn resolve(config: serde_json::Value) -> ResolveConfigurationResult<Configuration> {

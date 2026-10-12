@@ -1,0 +1,11 @@
+-- file.toml --
+~~ {"flavor":"oxfmt"} ~~
+== should format ==
+a=1
+[b]
+c   =  [1,2]
+
+[expect]
+a = 1
+[b]
+c = [1, 2]

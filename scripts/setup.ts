@@ -19,6 +19,7 @@ import { $ } from "automation";
 const rootDir = $.path(import.meta.dirname!).parentOrThrow();
 const vendorDir = rootDir.join("vendor/bun");
 const patchFile = rootDir.join("patches/bun.patch");
+const entryPointsDir = rootDir.join("patches/entry_points");
 const stampFile = vendorDir.join(".dprint-plugin-bun");
 
 const rev = getBunRev(rootDir.join("Cargo.toml").readTextSync());
@@ -66,7 +67,12 @@ function getBunRev(cargoTomlText: string) {
 
 /** What `vendor/bun` is made from: when it changes, the directory is made again. */
 async function getStamp(rev: string) {
-  const inputs = [rev, patchFile.readTextSync(), $.path(import.meta.filename!).readTextSync()];
+  const inputs = [
+    rev,
+    patchFile.readTextSync(),
+    $.path(import.meta.filename!).readTextSync(),
+    ...Array.from(entryPointsDir.readDirSync()).map(entry => entry.name + entry.path.readTextSync()).sort(),
+  ];
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(inputs.join("\0")));
   return Array.from(new Uint8Array(hash)).map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
@@ -141,51 +147,15 @@ function gateLayoutAssertions() {
 }
 
 /**
- * The driver of `bun format` has what formats a file in private functions,
- * and only tells a caller that a file has a syntax error, not which one.
+ * The driver of `bun format` has what formats a file and what reads a
+ * configuration in private functions, so the entry points of the plugin are
+ * added to its modules: the files in patches/entry_points.
  */
 function addPluginEntryPoints() {
-  const driverFile = vendorDir.join("src/lint/driver/fmt/mod.rs");
-  driverFile.writeTextSync(
-    driverFile.readTextSync().trimEnd() + `
-
-/// Whether the file at \`path\` is in a language that the formatter has. For dprint-plugin-bun.
-pub fn is_formatted_for_plugin(path: &[u8], options: &FormatOptions) -> bool {
-    Kind::with_options(path, options).is_some()
-}
-
-/// The text of the file at \`path\` formatted with \`options\`, the way \`bun format\` does it, or else why
-/// the file is left as it is. For dprint-plugin-bun.
-pub fn format_for_plugin(
-    path: &[u8],
-    text: &[u8],
-    options: &FormatOptions,
-) -> Result<Vec<u8>, Vec<u8>> {
-    let resolved = Resolved {
-        options: FormatOptions {
-            format_javascript: Some(format_javascript(true)),
-            parse_javascript: Some(parse_javascript),
-            ..options.clone()
-        },
-        ..Resolved::default()
-    };
-    let names = Session::new();
-    format(
-        path,
-        text,
-        &resolved,
-        (&Interner::new_in(&names), &names),
-        &mut Scratches::default(),
-        true,
-    )
-    .map(|(formatted, _)| formatted)
-    .map_err(|failure| match failure {
-        Failure::Syntax(message) | Failure::Unread(message) => message,
-        Failure::Bug(what) | Failure::Loss(what) => what.as_bytes().to_vec(),
-    })
-}
-`,
-  );
+  for (const entry of entryPointsDir.readDirSync()) {
+    const driverFile = vendorDir.join("src/lint/driver/fmt", entry.name);
+    driverFile.writeTextSync(driverFile.readTextSync().trimEnd() + "\n" + entry.path.readTextSync());
+  }
 }
 
 /** Runs the generators of Bun's build that write what the crates include. */

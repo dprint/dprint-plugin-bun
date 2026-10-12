@@ -1,0 +1,14 @@
+-- package.json --
+~~ {"flavor":"oxfmt"} ~~
+== should format ==
+{"version":"1","scripts":{"b":"1","a":"2"},"name":"x"}
+
+[expect]
+{
+  "name": "x",
+  "version": "1",
+  "scripts": {
+    "b": "1",
+    "a": "2"
+  }
+}

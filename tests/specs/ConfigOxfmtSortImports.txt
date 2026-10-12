@@ -1,0 +1,25 @@
+~~ {"flavor":"oxfmt","sortImports":true} ~~
+== should format ==
+import { b, a } from "./util";
+import { db } from "@/db";
+import { z, unused } from "zod";
+import React from "react";
+import { readFile } from "node:fs/promises";
+import type { T } from "./types";
+
+console.log(a, b, db, z, readFile, React);
+let t: T;
+
+[expect]
+import { readFile } from "node:fs/promises";
+
+import React from "react";
+import { z, unused } from "zod";
+
+import { db } from "@/db";
+
+import type { T } from "./types";
+import { b, a } from "./util";
+
+console.log(a, b, db, z, readFile, React);
+let t: T;

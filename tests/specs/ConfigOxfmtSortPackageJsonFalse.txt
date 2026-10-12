@@ -1,0 +1,10 @@
+-- package.json --
+~~ {"flavor":"oxfmt","sortPackageJson":false} ~~
+== should format ==
+{"version":"1","name":"x"}
+
+[expect]
+{
+  "version": "1",
+  "name": "x"
+}
