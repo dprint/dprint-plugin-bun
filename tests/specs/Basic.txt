@@ -1,0 +1,27 @@
+== should format ==
+console.log(   5   )
+
+[expect]
+console.log(5);
+
+== should format typescript ==
+const   x:number=1
+function  foo<T>( a:T,b ?: string ){return a}
+import {z} from 'zod'
+
+[expect]
+const x: number = 1;
+function foo<T>(a: T, b?: string) {
+  return a;
+}
+import { z } from "zod";
+
+== should keep code after an ignore comment ==
+// prettier-ignore
+const   x  =  1;
+const   y  =  2;
+
+[expect]
+// prettier-ignore
+const   x  =  1;
+const y = 2;

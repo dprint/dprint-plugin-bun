@@ -1,0 +1,16 @@
+-- file.html --
+== should format html and what is in it ==
+<div><p>hello</p><script>const   x=1</script><style>a{b:c}</style></div>
+
+[expect]
+<div>
+  <p>hello</p>
+  <script>
+    const x = 1;
+  </script>
+  <style>
+    a {
+      b: c;
+    }
+  </style>
+</div>

@@ -1,0 +1,11 @@
+-- file.graphql --
+== should format graphql ==
+query{a{b,c}}
+
+[expect]
+query {
+  a {
+    b
+    c
+  }
+}

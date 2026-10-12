@@ -1,0 +1,50 @@
+[package]
+name = "dprint-plugin-bun"
+version = "0.1.0"
+authors = ["David Sherret <dsherret@gmail.com>"]
+edition = "2024"
+keywords = ["formatting", "formatter", "bun"]
+license = "MIT"
+repository = "https://github.com/dprint/dprint-plugin-bun"
+description = "JavaScript, TypeScript, JSON, CSS, GraphQL, YAML, Markdown, HTML, Vue, and Handlebars formatter for dprint via Bun."
+
+# The release and the commit of https://github.com/oven-sh/bun that the formatter
+# is built from. `deno task setup` checks the commit out into `vendor/bun`.
+#
+# No release has the formatter yet, so for now the commit is the one that added
+# it, which came after this release.
+[package.metadata.bun]
+version = "1.4.3"
+rev = "c39c718b44107075481f80a9267259059565d504"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[profile.release]
+opt-level = 3
+debug = false
+lto = true
+debug-assertions = false
+overflow-checks = false
+panic = "abort"
+
+[features]
+wasm = ["serde_json", "dprint-core/wasm"]
+
+[dependencies]
+bun_format = { path = "vendor/bun/src/format" }
+bun_lint_driver = { path = "vendor/bun/src/lint/driver" }
+dprint-core = { version = "0.70.0", default-features = false }
+memchr = "2.8"
+regress = { version = "0.12", features = ["utf16"] }
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = { version = "1.0", optional = true }
+
+[dev-dependencies]
+dprint-development = "0.12.1"
+pretty_assertions = "1.4.0"
+serde_json = { version = "1.0" }
+
+# Bun's repository is a workspace of its own
+[workspace]
+exclude = ["vendor", "shims"]

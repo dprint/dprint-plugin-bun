@@ -1,0 +1,12 @@
+~~ objectWrap: collapse, experimentalOperatorPosition: start, printWidth: 40 ~~
+== should collapse objects and break before operators ==
+const obj = {
+  a: 1 };
+const sum = someLongValueNumberOne + someLongValueNumberTwo + three;
+
+[expect]
+const obj = { a: 1 };
+const sum =
+  someLongValueNumberOne
+  + someLongValueNumberTwo
+  + three;

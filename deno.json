@@ -1,0 +1,10 @@
+{
+  "tasks": {
+    "setup": "deno run -A scripts/setup.ts",
+    "patch": "git -C vendor/bun diff --output=../../patches/bun.patch -- src"
+  },
+  "imports": {
+    "automation": "jsr:@dprint/automation@0.12.2",
+    "octokit": "npm:octokit@^3.1"
+  }
+}

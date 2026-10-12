@@ -1,0 +1,14 @@
+-- file.tsx --
+~~ jsxSingleQuote: true, bracketSameLine: true, singleAttributePerLine: true, printWidth: 40 ~~
+== should format jsx ==
+const x = <div className="a"   id="b" onClick={() => call()}>hi</div>
+
+[expect]
+const x = (
+  <div
+    className='a'
+    id='b'
+    onClick={() => call()}>
+    hi
+  </div>
+);

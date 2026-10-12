@@ -1,0 +1,13 @@
+-- file.vue --
+~~ vueIndentScriptAndStyle: true ~~
+== should format vue ==
+<template><div :class="{a:b}">x</div></template>
+<script setup lang="ts">
+const   x:number=1
+</script>
+
+[expect]
+<template><div :class="{ a: b }">x</div></template>
+<script setup lang="ts">
+  const x: number = 1;
+</script>

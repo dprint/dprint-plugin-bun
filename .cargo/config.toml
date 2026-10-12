@@ -1,0 +1,22 @@
+# Bun's crates are only made to build for Wasm here (see scripts/setup.ts), so
+# that is what `cargo check` and `cargo test` build. The plugin itself is built
+# with `--target wasm32-unknown-unknown`.
+[build]
+target = "wasm32-wasip1"
+
+# the tests run in Node.js
+[target.wasm32-wasip1]
+runner = "node --disable-warning=ExperimentalWarning scripts/run_wasi.mjs"
+
+[target.'cfg(target_family = "wasm")']
+rustflags = [
+  # Bun keeps flags in the three highest bits of some pointers, which are only
+  # free on a 32-bit target while every address is below 2^29 (512 MiB)
+  "-C",
+  "link-arg=--max-memory=536870912",
+  # Bun stops with an error when code is nested so deeply that little of the
+  # stack in the memory of the module is left. The runtime has a stack of its
+  # own that it does not tell about, which a larger stack here would outlast.
+  "-C",
+  "link-arg=-zstack-size=1048576",
+]

@@ -1,0 +1,15 @@
+-- file.json --
+== should format json ==
+{"a":1,"b":[1,2],
+"c":{"d":null}}
+
+[expect]
+{ "a": 1, "b": [1, 2], "c": { "d": null } }
+
+== should keep comments in jsonc ==
+// comment
+{"a":1}
+
+[expect]
+// comment
+{ "a": 1 }

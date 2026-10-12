@@ -1,0 +1,6 @@
+~~ embeddedLanguageFormatting: off ~~
+== should not format css in a template ==
+const a = css`a{b:c}`;
+
+[expect]
+const a = css`a{b:c}`;

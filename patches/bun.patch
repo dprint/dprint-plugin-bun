@@ -1,0 +1,299 @@
+diff --git a/src/bun_alloc/basic.rs b/src/bun_alloc/basic.rs
+index 4ec2f3a..fe198da 100644
+--- a/src/bun_alloc/basic.rs
++++ b/src/bun_alloc/basic.rs
+@@ -43,7 +43,7 @@ static C_ALLOCATOR_VTABLE: &AllocatorVTable = &AllocatorVTable {
+ mod memory_allocator_tags {
+     use core::ffi::c_void;
+ 
+-    const DEFAULT_ALLOCATOR_TAG: usize = 0xBEEFA110C; // "BEEFA110C"  beef a110c i guess
++    const DEFAULT_ALLOCATOR_TAG: usize = 0xBEEFA110C_u64 as usize; // "BEEFA110C"  beef a110c i guess
+     pub(crate) const DEFAULT_ALLOCATOR_TAG_PTR: *mut c_void = DEFAULT_ALLOCATOR_TAG as *mut c_void;
+ }
+ 
+diff --git a/src/bun_alloc/lib.rs b/src/bun_alloc/lib.rs
+index ac62c74..aace206 100644
+--- a/src/bun_alloc/lib.rs
++++ b/src/bun_alloc/lib.rs
+@@ -672,6 +672,10 @@ pub fn page_size() -> usize {
+             GetSystemInfo(&mut info);
+             info.dw_page_size as usize
+         }
++        #[cfg(target_family = "wasm")]
++        {
++            65536
++        }
+     })
+ }
+ 
+diff --git a/src/bun_core/Global.rs b/src/bun_core/Global.rs
+index cd21cf9..7423206 100644
+--- a/src/bun_core/Global.rs
++++ b/src/bun_core/Global.rs
+@@ -716,13 +716,18 @@ pub fn exit(code: u32) -> ! {
+         // `ExitProcess` is `safe fn` (no preconditions; never returns).
+         crate::windows_sys::kernel32::ExitProcess(code)
+     }
+-    #[cfg(not(any(target_os = "macos", windows)))]
++    #[cfg(all(unix, not(target_os = "macos")))]
+     {
+         if env::ENABLE_ASAN {
+             libc_exit(code as i32);
+         }
+         quick_exit(code as c_int);
+     }
++    #[cfg(target_family = "wasm")]
++    {
++        let _ = code;
++        libc_abort()
++    }
+ }
+ 
+ pub fn raise_ignoring_panic_handler(sig: crate::SignalCode) -> ! {
+@@ -773,7 +778,7 @@ pub fn raise_ignoring_panic_handler_raw(sig: c_int) -> ! {
+     }
+ 
+     // clear signal handler
+-    #[cfg(not(windows))]
++    #[cfg(unix)]
+     {
+         // SAFETY: zeroed sigset + SIG_DFL handler is a valid Sigaction.
+         unsafe {
+diff --git a/src/bun_core/output.rs b/src/bun_core/output.rs
+index ce9b6d7..0dfa888 100644
+--- a/src/bun_core/output.rs
++++ b/src/bun_core/output.rs
+@@ -246,10 +246,7 @@ fn stdio_tty_flag(idx: usize) -> bool {
+ // ──────────────────────────────────────────────────────────────────────────
+ 
+ /// `Source.StreamType` — `File` on native, a fixed-buffer stream on WASM.
+-#[cfg(not(target_arch = "wasm32"))]
+ pub type StreamType = File;
+-#[cfg(target_arch = "wasm32")]
+-pub type StreamType = io::FixedBufferStream; // wasm32 is not built yet; FixedBufferStream is unported.
+ 
+ pub struct Source {
+     pub(crate) stdout_buffer: [u8; 4096],
+@@ -273,14 +270,7 @@ impl Source {
+     // `File::ZEROED` is `Fd::INVALID`, so a pre-init read fails loudly
+     // instead of aliasing fd 0; `FixedBufferStream` has no `ZEROED` const,
+     // so the wasm32 arm spells out the empty stream field-wise.
+-    #[cfg(not(target_arch = "wasm32"))]
+     const ZEROED_STREAM: StreamType = StreamType::ZEROED;
+-    #[cfg(target_arch = "wasm32")]
+-    const ZEROED_STREAM: StreamType = StreamType {
+-        buf: core::ptr::null_mut(),
+-        len: 0,
+-        pos: 0,
+-    };
+ 
+     pub(crate) const ZEROED: Self = Self {
+         stdout_buffer: [0u8; 4096],
+diff --git a/src/bun_core/string/SmolStr.rs b/src/bun_core/string/SmolStr.rs
+index de70974..4d86dc8 100644
+--- a/src/bun_core/string/SmolStr.rs
++++ b/src/bun_core/string/SmolStr.rs
+@@ -18,8 +18,8 @@ const _: () = assert!(mem::size_of::<usize>() == 8);
+ #[repr(transparent)]
+ pub struct SmolStr(u128);
+ 
+-const TAG: usize = 0x8000_0000_0000_0000; // bit 63 of the ptr word == bit 127 of the u128
+-const NEGATED_TAG: usize = !TAG;
++const TAG: u64 = 0x8000_0000_0000_0000; // bit 63 of the ptr word == bit 127 of the u128
++const NEGATED_TAG: u64 = !TAG;
+ 
+ impl SmolStr {
+     // ---- raw field accessors (packed-struct shims) ------------------------
+@@ -41,11 +41,11 @@ impl SmolStr {
+         self.0 = (self.0 & !(0xFFFF_FFFFu128 << 32)) | ((v as u128) << 32);
+     }
+     #[inline]
+-    fn raw_ptr_bits(&self) -> usize {
+-        (self.0 >> 64) as usize
++    fn raw_ptr_bits(&self) -> u64 {
++        (self.0 >> 64) as u64
+     }
+     #[inline]
+-    fn set_raw_ptr_bits(&mut self, v: usize) {
++    fn set_raw_ptr_bits(&mut self, v: u64) {
+         self.0 = (self.0 & 0xFFFF_FFFF_FFFF_FFFFu128) | ((v as u128) << 64);
+     }
+ 
+@@ -63,11 +63,11 @@ impl SmolStr {
+     }
+ 
+     pub fn ptr(&mut self) -> *mut u8 {
+-        (self.raw_ptr_bits() & NEGATED_TAG) as *mut u8
++        (self.raw_ptr_bits() & NEGATED_TAG) as usize as *mut u8
+     }
+ 
+     pub(crate) fn ptr_const(&self) -> *const u8 {
+-        (self.raw_ptr_bits() & NEGATED_TAG) as *const u8
++        (self.raw_ptr_bits() & NEGATED_TAG) as usize as *const u8
+     }
+ 
+     pub(crate) fn mark_inlined(&mut self) {
+@@ -100,7 +100,7 @@ impl SmolStr {
+         let mut smol_str = SmolStr(0);
+         smol_str.set_raw_len(len);
+         smol_str.set_raw_cap(cap);
+-        smol_str.set_raw_ptr_bits(p as usize);
++        smol_str.set_raw_ptr_bits(p as usize as u64);
+         smol_str.mark_heap();
+         smol_str
+     }
+diff --git a/src/bun_core/string/mod.rs b/src/bun_core/string/mod.rs
+index 8934146..15df6f8 100644
+--- a/src/bun_core/string/mod.rs
++++ b/src/bun_core/string/mod.rs
+@@ -1170,10 +1170,16 @@ impl core::fmt::Display for EncodedSlice<'_> {
+ 
+ // `EncodedSlice` pointer-tag scheme. Flag bits live in the pointer's high
+ // byte; untagging truncates to 53 bits.
+-const TAG_UTF8_BIT: usize = 1usize << 61;
+-const TAG_GLOBAL_BIT: usize = 1usize << 62;
+-const TAG_UTF16_BIT: usize = 1usize << 63;
++// The flag bits are the three highest of the pointer. On a 32-bit target that is
++// only sound while every address is below 2^29, which the linker has to enforce
++// with a maximum memory size.
++const TAG_UTF8_BIT: usize = 1usize << (usize::BITS - 3);
++const TAG_GLOBAL_BIT: usize = 1usize << (usize::BITS - 2);
++const TAG_UTF16_BIT: usize = 1usize << (usize::BITS - 1);
++#[cfg(target_pointer_width = "64")]
+ const UNTAG_MASK: usize = (1usize << 53) - 1;
++#[cfg(not(target_pointer_width = "64"))]
++const UNTAG_MASK: usize = TAG_UTF8_BIT - 1;
+ 
+ /// `{tagged ptr, len}` with encoding bits (Latin-1 / UTF-8 / UTF-16 / global)
+ /// in the pointer's high byte; borrows `'a`. Also the [`String`] union arm.
+diff --git a/src/bun_core/util.rs b/src/bun_core/util.rs
+index b7fced6..3b3eafd 100644
+--- a/src/bun_core/util.rs
++++ b/src/bun_core/util.rs
+@@ -2762,6 +2762,11 @@ pub fn self_exe_path() -> crate::CrateResult<&'static ZStr> {
+             }
+             Ok(ZBox::from_vec_with_nul(s.into_bytes()))
+         }
++        #[cfg(target_family = "wasm")]
++        {
++            let _ = path;
++            Err(crate::CrateError::Unexpected)
++        }
+     });
+     match r {
+         Ok(z) => Ok(z.as_zstr()),
+@@ -4415,7 +4420,6 @@ pub fn reload_process(clear_terminal: bool, may_return: bool) {
+         // Bun only targets POSIX + Windows; any other target
+         // is a build-time error, not a runtime panic.
+         let _ = (clear_terminal, may_return);
+-        compile_error!("unsupported platform for reload_process");
+     }
+ }
+ 
+@@ -5004,6 +5008,11 @@ impl Timespec {
+             clock_gettime_monotonic(&mut sec, &mut nsec);
+             Timespec { sec, nsec }
+         }
++        // there is no clock
++        #[cfg(target_family = "wasm")]
++        {
++            Timespec { sec: 0, nsec: 0 }
++        }
+     }
+ 
+     #[inline]
+diff --git a/src/errno/lib.rs b/src/errno/lib.rs
+index 2943fc5..fbb3fc2 100644
+--- a/src/errno/lib.rs
++++ b/src/errno/lib.rs
+@@ -186,9 +186,9 @@ pub use freebsd_errno::*;
+ // Android shares the Linux kernel errno space (bionic copies <asm/errno.h>),
+ // so it uses the same per-errno enum. Rust splits `target_os` into
+ // `linux`/`android`, so list both.
+-#[cfg(any(target_os = "linux", target_os = "android"))]
++#[cfg(any(target_os = "linux", target_os = "android", target_family = "wasm"))]
+ pub mod linux_errno;
+-#[cfg(any(target_os = "linux", target_os = "android"))]
++#[cfg(any(target_os = "linux", target_os = "android", target_family = "wasm"))]
+ pub use linux_errno::*;
+ #[cfg(windows)]
+ pub mod windows_errno;
+@@ -207,7 +207,7 @@ pub use windows_errno::{posix, *};
+ #[allow(non_camel_case_types)]
+ pub mod posix {
+     /// glibc/musl/bionic `mode_t` == `unsigned int`.
+-    #[cfg(any(target_os = "linux", target_os = "android"))]
++    #[cfg(any(target_os = "linux", target_os = "android", target_family = "wasm"))]
+     pub type mode_t = u32;
+     /// Darwin/FreeBSD `mode_t` == `__uint16_t` in `<sys/types.h>`.
+     #[cfg(any(target_os = "macos", target_os = "freebsd"))]
+diff --git a/src/threading/Futex.rs b/src/threading/Futex.rs
+index a62d55c..af5c5b7 100644
+--- a/src/threading/Futex.rs
++++ b/src/threading/Futex.rs
+@@ -469,9 +469,14 @@ mod wasm_impl {
+         expect: u32,
+         timeout: Option<u64>,
+     ) -> Result<(), TimeoutError> {
++        // nothing can wake a single thread, so it does not wait
+         #[cfg(not(target_feature = "atomics"))]
+-        compile_error!("WASI target missing cpu feature 'atomics'");
+-
++        {
++            let _ = (ptr, expect, timeout);
++            Ok(())
++        }
++        #[cfg(target_feature = "atomics")]
++        {
+         let to: i64 = match timeout {
+             Some(to) => i64::try_from(to).expect("int cast"),
+             None => -1,
+@@ -486,12 +491,16 @@ mod wasm_impl {
+             2 => Err(TimeoutError::Timeout),
+             _ => panic!("Unexpected memory.atomic.wait32() return code"),
+         }
++        }
+     }
+ 
+     pub fn wake(ptr: *const AtomicU32, max_waiters: u32) {
+         #[cfg(not(target_feature = "atomics"))]
+-        compile_error!("WASI target missing cpu feature 'atomics'");
+-
++        {
++            let _ = (ptr, max_waiters);
++        }
++        #[cfg(target_feature = "atomics")]
++        {
+         debug_assert!(max_waiters != 0);
+         // SAFETY: memory.atomic.notify only keys on the aligned address, and linear memory is
+         // never unmapped (see `super::wake_raw`); AtomicU32 has the layout of i32.
+@@ -499,6 +508,7 @@ mod wasm_impl {
+             core::arch::wasm32::memory_atomic_notify(ptr.cast::<i32>().cast_mut(), max_waiters)
+         };
+         let _ = woken_count; // can be 0 when linker flag 'shared-memory' is not enabled
++        }
+     }
+ }
+ 
+diff --git a/src/windows_sys/externs.rs b/src/windows_sys/externs.rs
+index 7eff1a5..193d18b 100644
+--- a/src/windows_sys/externs.rs
++++ b/src/windows_sys/externs.rs
+@@ -1686,6 +1686,8 @@ pub fn teb() -> *mut TEB {
+         core::arch::asm!("mov {}, x18", out(reg) p, options(nostack, pure, readonly));
+         p
+     }
++    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
++    core::ptr::null_mut()
+ }
+ 
+ /// Reads the PEB pointer — `gs:[0x60]` (x64) / `TEB+0x60` (ARM64).
+@@ -1714,6 +1716,8 @@ pub fn peb() -> *const PEB {
+             .cast::<core::ffi::c_void>()
+             .cast::<*const PEB>()
+     }
++    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
++    core::ptr::null()
+ }
+ 
+ // ── Console ctrl-handler dwCtrlType values (`wincon.h`) ───────────────────

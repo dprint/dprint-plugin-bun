@@ -1,0 +1,13 @@
+[package]
+name = "bun_wasm_libc"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Stands in for the libc crate in Bun's crates, which has nothing for Wasm."
+
+[lib]
+name = "libc"
+path = "src/lib.rs"
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+real_libc = { package = "libc", version = "0.2" }

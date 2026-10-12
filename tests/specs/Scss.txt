@@ -1,0 +1,12 @@
+-- file.scss --
+== should format scss ==
+$a:1px;
+.a{&:hover{b:$a}}
+
+[expect]
+$a: 1px;
+.a {
+  &:hover {
+    b: $a;
+  }
+}

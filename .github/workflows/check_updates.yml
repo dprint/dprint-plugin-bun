@@ -1,0 +1,53 @@
+name: check_updates
+
+on:
+  workflow_dispatch:
+  schedule:
+    # do this once per day
+    - cron: "0 7 * * *"
+
+jobs:
+  build:
+    name: check updates
+    if: github.repository == 'dprint/dprint-plugin-bun'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GH_DPRINTBOT_PAT }}
+
+      - uses: denoland/setup-deno@v2
+      - uses: dsherret/rust-toolchain-file@v1
+
+      # the update script tests with wasm32-wasip1 and builds the wasm release as
+      # some of its checks.
+      - name: Install wasm32 targets
+        run: rustup target add wasm32-unknown-unknown wasm32-wasip1
+
+      # node runs the tests, and the update script installs and runs the OpenAI
+      # Codex CLI (@openai/codex) with it when it has to reconcile a Bun update.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Run script
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # The fixer and the reviewer use the default model of the Codex CLI,
+          # which the script installs at its latest version. Set CODEX_MODEL
+          # or REVIEW_MODEL here to pin the model of either.
+        run: |
+          git config user.email "dprintbot@users.noreply.github.com"
+          git config user.name "dprintbot"
+          deno run -A ./scripts/update.ts
+  # This is necessary to prevent GH automatically disabling this workflow after 60 days.
+  workflow-keepalive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - uses: liskin/gh-workflow-keepalive@f72ff1a1336129f29bf0166c0fd0ca6cf1bcb38c

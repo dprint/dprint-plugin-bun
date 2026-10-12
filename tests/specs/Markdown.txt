@@ -1,0 +1,20 @@
+-- file.md --
+!! should format markdown and the code in it !!
+#   Title
+
+* item
+* item2
+
+```ts
+const   x=1
+```
+
+[expect]
+# Title
+
+- item
+- item2
+
+```ts
+const x = 1;
+```

@@ -1,0 +1,4 @@
+# has to be the toolchain of Bun, whose crates use unstable features
+[toolchain]
+channel = "nightly-2026-09-15"
+components = ["clippy", "rustfmt"]

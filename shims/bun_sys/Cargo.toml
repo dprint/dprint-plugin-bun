@@ -1,0 +1,13 @@
+[package]
+name = "bun_sys"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Stands in for Bun's bun_sys, which is the system calls."
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+bun_core = { path = "../../vendor/bun/src/bun_core" }
+bun_errno = { path = "../../vendor/bun/src/errno" }
