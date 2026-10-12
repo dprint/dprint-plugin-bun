@@ -1,6 +1,12 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  pull_request:
+  # only the pushes that a pull request does not cover, which otherwise runs
+  # the jobs twice for a branch of this repo
+  push:
+    branches: [main]
+    tags: ["*"]
 
 jobs:
   build:
