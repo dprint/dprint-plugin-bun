@@ -2,24 +2,24 @@
   "name": "@dprint/bun",
   "version": "0.0.0",
   "description": "Wasm buffer for dprint-plugin-bun.",
-  "main": "./index.js",
-  "types": "./index.d.ts",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/dprint/dprint-plugin-bun.git"
-  },
   "keywords": [
     "bun",
     "code",
     "formatter",
     "dprint"
   ],
-  "author": "David Sherret",
-  "license": "MIT",
+  "homepage": "https://github.com/dprint/dprint-plugin-bun#readme",
   "bugs": {
     "url": "https://github.com/dprint/dprint-plugin-bun/issues"
   },
-  "homepage": "https://github.com/dprint/dprint-plugin-bun#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dprint/dprint-plugin-bun.git"
+  },
+  "license": "MIT",
+  "author": "David Sherret",
+  "main": "./index.js",
+  "types": "./index.d.ts",
   "scripts": {
     "test": "node index.test.js"
   },
