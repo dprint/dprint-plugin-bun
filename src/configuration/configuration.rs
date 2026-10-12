@@ -36,6 +36,89 @@ pub struct Configuration {
   /// the order of imports and the ones of oxfmt.
   #[serde(flatten)]
   pub other: serde_json::Map<String, serde_json::Value>,
+  /// The languages that were turned off with their `<language>.enabled` option.
+  #[serde(default)]
+  pub disabled_languages: Vec<Language>,
+}
+
+impl Configuration {
+  /// Gets if the files of the language are formatted, which is the case
+  /// unless the language was turned off with its `<language>.enabled` option.
+  pub fn is_language_enabled(&self, language: Language) -> bool {
+    // Bun only formats TOML the way oxfmt does, which Prettier has no way for
+    if language == Language::Toml && self.flavor != Some(Flavor::Oxfmt) {
+      return false;
+    }
+    !self.disabled_languages.contains(&language)
+  }
+}
+
+/// A language that can be turned off with its `<language>.enabled` option.
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Language {
+  JavaScript,
+  TypeScript,
+  Json,
+  Jsonc,
+  Json5,
+  Css,
+  Scss,
+  Less,
+  Yaml,
+  Markdown,
+  Mdx,
+  Graphql,
+  Handlebars,
+  Html,
+  Vue,
+  Mjml,
+  Toml,
+}
+
+impl Language {
+  pub const ALL: [Language; 17] = [
+    Language::JavaScript,
+    Language::TypeScript,
+    Language::Json,
+    Language::Jsonc,
+    Language::Json5,
+    Language::Css,
+    Language::Scss,
+    Language::Less,
+    Language::Yaml,
+    Language::Markdown,
+    Language::Mdx,
+    Language::Graphql,
+    Language::Handlebars,
+    Language::Html,
+    Language::Vue,
+    Language::Mjml,
+    Language::Toml,
+  ];
+
+  /// The name of the option that decides if the language's files are formatted.
+  pub fn enabled_option_name(&self) -> &'static str {
+    match self {
+      Language::JavaScript => "javascript.enabled",
+      Language::TypeScript => "typescript.enabled",
+      Language::Json => "json.enabled",
+      Language::Jsonc => "jsonc.enabled",
+      Language::Json5 => "json5.enabled",
+      Language::Css => "css.enabled",
+      Language::Scss => "scss.enabled",
+      Language::Less => "less.enabled",
+      Language::Yaml => "yaml.enabled",
+      Language::Markdown => "markdown.enabled",
+      Language::Mdx => "mdx.enabled",
+      Language::Graphql => "graphql.enabled",
+      Language::Handlebars => "handlebars.enabled",
+      Language::Html => "html.enabled",
+      Language::Vue => "vue.enabled",
+      Language::Mjml => "mjml.enabled",
+      Language::Toml => "toml.enabled",
+    }
+  }
 }
 
 /// Whose output to produce where the two differ, and whose options there are.

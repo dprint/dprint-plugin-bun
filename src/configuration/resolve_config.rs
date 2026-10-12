@@ -1,5 +1,6 @@
 use super::Configuration;
 use super::EndOfLine;
+use super::Language;
 use crate::options::build_bun_config;
 use bun_lint_driver::fmt::check_config_for_plugin;
 use dprint_core::configuration::*;
@@ -63,6 +64,7 @@ pub fn resolve_config(
     require_pragma: get_nullable_value(&mut config, "requirePragma", &mut diagnostics),
     check_ignore_pragma: get_nullable_value(&mut config, "checkIgnorePragma", &mut diagnostics),
     other: take_other_options(&mut config),
+    disabled_languages: take_disabled_languages(&mut config, &mut diagnostics),
   };
 
   diagnostics.extend(get_unknown_property_diagnostics(config));
@@ -132,6 +134,13 @@ fn take_other_options(config: &mut ConfigKeyMap) -> serde_json::Map<String, serd
     }
   }
   options
+}
+
+fn take_disabled_languages(config: &mut ConfigKeyMap, diagnostics: &mut Vec<ConfigurationDiagnostic>) -> Vec<Language> {
+  Language::ALL
+    .into_iter()
+    .filter(|language| get_nullable_value(config, language.enabled_option_name(), diagnostics) == Some(false))
+    .collect()
 }
 
 fn to_json(value: ConfigKeyValue) -> serde_json::Value {

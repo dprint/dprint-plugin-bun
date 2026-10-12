@@ -142,6 +142,8 @@ fn should_have_diagnostics_for_invalid_config() {
     (serde_json::json!({ "trailingComma": "always" }), "trailingComma"),
     (serde_json::json!({ "quoteProps": "asNeeded" }), "quoteProps"),
     (serde_json::json!({ "unknown": true }), "unknown"),
+    (serde_json::json!({ "markdown.enabled": "no" }), "markdown.enabled"),
+    (serde_json::json!({ "svelte.enabled": false }), "svelte.enabled"),
   ] {
     let diagnostics = resolve(config.clone()).diagnostics;
     assert_eq!(
@@ -239,6 +241,84 @@ fn should_only_format_toml_for_oxfmt() {
   assert_eq!(
     format_text(&path, "a=1\n", &config).unwrap().as_deref(),
     Some("a = 1\n")
+  );
+}
+
+#[test]
+fn should_not_format_disabled_languages() {
+  let config = resolve(serde_json::json!({
+    "markdown.enabled": false,
+    "typescript.enabled": false,
+    "yaml.enabled": false,
+    "css.enabled": true,
+    "mdx.enabled": null,
+  }));
+  assert!(config.diagnostics.is_empty());
+  let config = config.config;
+  let extensions = file_extensions(&config);
+  for ext in ["md", "markdown", "ts", "tsx", "yaml", "yml"] {
+    assert!(!extensions.contains(&ext.to_string()), "{ext}");
+  }
+  for ext in ["mdx", "js", "jsx", "css", "json"] {
+    assert!(extensions.contains(&ext.to_string()), "{ext}");
+  }
+  let names = file_names(&config);
+  assert!(!names.contains(&".prettierrc".to_string()));
+  assert!(names.contains(&".babelrc".to_string()));
+
+  for (file_name, text) in [
+    ("file.md", "#   Title\n"),
+    ("FILE.MD", "#   Title\n"),
+    ("file.ts", "const   a = 1\n"),
+    ("file.yml", "a:   1\n"),
+    (".prettierrc", "a:   1\n"),
+  ] {
+    let result = format_text(&PathBuf::from(file_name), text, &config).unwrap();
+    assert_eq!(result, None, "{file_name}");
+  }
+  for (file_name, text, expected) in [
+    ("file.js", "const   a = 1\n", "const a = 1;\n"),
+    ("file.css", "a{b:c}\n", "a {\n  b: c;\n}\n"),
+    ("file.mdx", "#   Title\n", "# Title\n"),
+  ] {
+    let result = format_text(&PathBuf::from(file_name), text, &config).unwrap();
+    assert_eq!(result.as_deref(), Some(expected), "{file_name}");
+  }
+}
+
+#[test]
+fn should_not_match_files_of_each_disabled_language() {
+  use dprint_plugin_bun::configuration::Language;
+
+  let all = resolve(serde_json::json!({ "flavor": "oxfmt" })).config;
+  let all_extensions = file_extensions(&all);
+  for language in Language::ALL {
+    let config = resolve(serde_json::json!({ "flavor": "oxfmt", language.enabled_option_name(): false }));
+    assert!(config.diagnostics.is_empty(), "{language:?}");
+    assert!(!config.config.is_language_enabled(language));
+    let extensions = file_extensions(&config.config);
+    assert!(extensions.len() < all_extensions.len(), "{language:?}");
+    // the files that are still matched are still formatted
+    for ext in extensions {
+      let file_name = format!("file.{ext}");
+      let result = format_text(&PathBuf::from(&file_name), "{  }\n\n\n", &config.config);
+      assert!(!matches!(result, Ok(None)), "{file_name}");
+    }
+  }
+}
+
+#[test]
+fn should_not_enable_toml_for_prettier() {
+  let config = resolve(serde_json::json!({ "toml.enabled": true }));
+  assert!(config.diagnostics.is_empty());
+  assert!(!file_extensions(&config.config).contains(&"toml".to_string()));
+
+  let config = resolve(serde_json::json!({ "flavor": "oxfmt", "toml.enabled": false })).config;
+  assert!(!file_extensions(&config).contains(&"toml".to_string()));
+  assert!(!file_names(&config).contains(&"Pipfile".to_string()));
+  assert_eq!(
+    format_text(&PathBuf::from("file.toml"), "a=1\n", &config).unwrap(),
+    None
   );
 }
 
