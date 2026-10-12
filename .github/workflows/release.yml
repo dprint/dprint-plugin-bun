@@ -27,6 +27,10 @@ jobs:
       - uses: denoland/setup-deno@v2
       - uses: dsherret/rust-toolchain-file@v1
 
+      # cargo needs the path dependencies in vendor/bun to update the lockfile
+      - name: Setup Bun's source
+        run: deno task setup
+
       - name: Bump version and tag
         env:
           GITHUB_TOKEN: ${{ secrets.GH_DPRINTBOT_PAT }}
