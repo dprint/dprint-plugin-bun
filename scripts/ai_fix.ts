@@ -156,7 +156,7 @@ function buildRefixPrompt(review: ReviewResult): string {
 // the languages the plugin formats. Keep this in sync with
 // `src/file_matching.rs` (the fixer is told to update it when adding a language).
 function describeLanguages(): string {
-  return "JavaScript/TypeScript/JSX/Flow, JSON/JSONC/JSON5, CSS/SCSS/Less, GraphQL, YAML, Markdown/MDX, HTML/Vue/MJML, and Handlebars. With the flavor of oxfmt it also formats TOML. It has none of what `bun format` hands to installed packages (the languages of Prettier plugins, the classes of Tailwind CSS), and no `overrides`";
+  return "JavaScript/TypeScript/JSX/Flow, JSON/JSONC/JSON5, CSS/SCSS/Less, GraphQL, YAML, Markdown/MDX, HTML/Vue/MJML, Handlebars, and TOML (the way oxfmt formats it, with every flavor). It has none of what `bun format` hands to installed packages (the languages of Prettier plugins, the classes of Tailwind CSS), and no `overrides`";
 }
 
 function describeWiring(): string {

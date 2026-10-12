@@ -6,7 +6,7 @@ edition = "2024"
 keywords = ["formatting", "formatter", "bun"]
 license = "MIT"
 repository = "https://github.com/dprint/dprint-plugin-bun"
-description = "JavaScript, TypeScript, JSON, CSS, GraphQL, YAML, Markdown, HTML, Vue, and Handlebars formatter for dprint via Bun."
+description = "JavaScript, TypeScript, JSON, CSS, GraphQL, YAML, Markdown, HTML, Vue, Handlebars, and TOML formatter for dprint via Bun."
 
 # The release and the commit of https://github.com/oven-sh/bun that the formatter
 # is built from. `deno task setup` checks the commit out into `vendor/bun`.

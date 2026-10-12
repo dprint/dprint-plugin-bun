@@ -129,11 +129,35 @@ fn take_other_options(config: &mut ConfigKeyMap) -> serde_json::Map<String, serd
     match config.shift_remove(*name) {
       Some(ConfigKeyValue::Null) | None => {}
       Some(value) => {
-        options.insert(name.to_string(), to_json(value));
+        let value = to_json(value);
+        // an option that is set to its default is the same as one that is not
+        // set, which Bun would otherwise refuse without what it is an option of
+        // (ex. `importOrderSeparation` without `plugins`)
+        if default_of_other_option(name).as_ref() != Some(&value) {
+          options.insert(name.to_string(), value);
+        }
       }
     }
   }
   options
+}
+
+/// The default of an option that Bun reads as it is written, which is the one
+/// that deployment/schema.json has for it.
+fn default_of_other_option(name: &str) -> Option<serde_json::Value> {
+  Some(match name {
+    "importOrderSeparation"
+    | "importOrderSortSpecifiers"
+    | "importOrderGroupNamespaceSpecifiers"
+    | "importOrderCaseInsensitive"
+    | "importOrderCaseSensitive"
+    | "organizeImportsSkipDestructiveCodeActions"
+    | "sortImports"
+    | "jsdoc" => false.into(),
+    "importOrderSideEffects" | "sortPackageJson" | "insertFinalNewline" => true.into(),
+    "importOrderTypeScriptVersion" => "1.0.0".into(),
+    _ => return None,
+  })
 }
 
 fn take_disabled_languages(config: &mut ConfigKeyMap, diagnostics: &mut Vec<ConfigurationDiagnostic>) -> Vec<Language> {

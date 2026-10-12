@@ -6,7 +6,7 @@ use bun_lint_driver::fmt::is_formatted_for_plugin;
 
 use crate::configuration::Configuration;
 use crate::file_matching::language_of;
-use crate::options::build_bun_config;
+use crate::options::build_bun_config_for;
 
 type FormatError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -21,11 +21,12 @@ pub fn format_range(
   range: Option<Range<usize>>,
   config: &Configuration,
 ) -> Result<Option<String>, FormatError> {
-  if language_of(file_path).is_some_and(|language| !config.is_language_enabled(language)) {
+  let language = language_of(file_path);
+  if language.is_some_and(|language| !config.is_language_enabled(language)) {
     return Ok(None);
   }
 
-  let bun_config = build_bun_config(config);
+  let bun_config = build_bun_config_for(config, language);
   let bun_config = (bun_config.json.as_bytes(), bun_config.is_oxfmt);
   // Bun goes by the name of the file, and writes a path with forward slashes
   let file_path = file_path.to_string_lossy().replace('\\', "/");
