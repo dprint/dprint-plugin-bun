@@ -10,15 +10,8 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.config.kind }} ${{ matrix.config.os }}
-    runs-on: ${{ matrix.config.os }}
-    strategy:
-      matrix:
-        config:
-          - os: ubuntu-latest
-            kind: test_release
-          - os: ubuntu-latest
-            kind: test_debug
+    name: build
+    runs-on: ubuntu-latest
 
     env:
       CARGO_INCREMENTAL: 0
@@ -47,28 +40,19 @@ jobs:
     - name: Setup Bun's source
       run: deno task setup
 
-    - name: Build debug
-      if: matrix.config.kind == 'test_debug'
-      run: cargo build
     - name: Build release
-      if: matrix.config.kind == 'test_release'
       run: cargo build --target wasm32-unknown-unknown --features wasm --release
 
-    - name: Test debug
-      if: matrix.config.kind == 'test_debug'
+    - name: Test
       run: cargo test
-    - name: Test release
-      if: matrix.config.kind == 'test_release'
-      run: cargo test --release
 
     - name: Get tag version
-      if: matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
+      if: startsWith(github.ref, 'refs/tags/')
       id: get_tag_version
       run: echo ::set-output name=TAG_VERSION::${GITHUB_REF/refs\/tags\//}
 
     # NPM
     - name: Setup and test npm deployment
-      if: matrix.config.kind == 'test_release'
       run: |
         cd deployment/npm
         npm install
@@ -77,7 +61,7 @@ jobs:
 
       # GITHUB RELEASE
     - name: Pre-release
-      if: matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
+      if: startsWith(github.ref, 'refs/tags/')
       run: |
         # update config schema to have version
         sed -i 's/bun\/0.0.0/bun\/${{ steps.get_tag_version.outputs.TAG_VERSION }}/' deployment/schema.json
@@ -86,7 +70,7 @@ jobs:
         # create release notes
         deno run -A ./scripts/generateReleaseNotes.ts ${{ steps.get_tag_version.outputs.TAG_VERSION }} > ${{ github.workspace }}-CHANGELOG.txt
     - name: Release
-      if: matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
+      if: startsWith(github.ref, 'refs/tags/')
       # gh uploads the assets to a draft and then publishes it, which immutable releases require
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
