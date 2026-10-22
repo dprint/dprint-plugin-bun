@@ -1,0 +1,7 @@
+-- file.svelte --
+~~ svelteAllowShorthand: false ~~
+== should format Svelte ==
+<Widget {value} />
+
+[expect]
+<Widget value={value} />

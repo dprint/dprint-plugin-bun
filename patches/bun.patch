@@ -12,10 +12,10 @@ index 4ec2f3a..fe198da 100644
  }
  
 diff --git a/src/bun_alloc/lib.rs b/src/bun_alloc/lib.rs
-index ac62c74..aace206 100644
+index 0cae996..1f4049c 100644
 --- a/src/bun_alloc/lib.rs
 +++ b/src/bun_alloc/lib.rs
-@@ -672,6 +672,10 @@ pub fn page_size() -> usize {
+@@ -652,6 +652,10 @@ pub fn page_size() -> usize {
              GetSystemInfo(&mut info);
              info.dw_page_size as usize
          }
@@ -27,10 +27,10 @@ index ac62c74..aace206 100644
  }
  
 diff --git a/src/bun_core/Global.rs b/src/bun_core/Global.rs
-index cd21cf9..7423206 100644
+index 7954b6b..18c5b06 100644
 --- a/src/bun_core/Global.rs
 +++ b/src/bun_core/Global.rs
-@@ -716,13 +716,18 @@ pub fn exit(code: u32) -> ! {
+@@ -719,13 +719,18 @@ pub fn exit(code: u32) -> ! {
          // `ExitProcess` is `safe fn` (no preconditions; never returns).
          crate::windows_sys::kernel32::ExitProcess(code)
      }
@@ -45,25 +45,37 @@ index cd21cf9..7423206 100644
 +    #[cfg(target_family = "wasm")]
 +    {
 +        let _ = code;
-+        libc_abort()
++        std::process::abort()
 +    }
  }
  
  pub fn raise_ignoring_panic_handler(sig: crate::SignalCode) -> ! {
-@@ -773,7 +778,7 @@ pub fn raise_ignoring_panic_handler_raw(sig: c_int) -> ! {
-     }
+@@ -789,7 +794,7 @@ pub fn raise_ignoring_panic_handler_raw(sig: c_int) -> ! {
  
-     // clear signal handler
--    #[cfg(not(windows))]
-+    #[cfg(unix)]
-     {
-         // SAFETY: zeroed sigset + SIG_DFL handler is a valid Sigaction.
-         unsafe {
+ /// Kills the process with `sig`'s default action. Exits with 128 + `sig` if the kernel discards
+ /// the signal (PID 1 in a pid namespace). Async-signal-safe.
+-#[cfg(not(windows))]
++#[cfg(unix)]
+ pub fn raise_default_action(sig: c_int) -> ! {
+     // SAFETY: zeroed sigset + SIG_DFL handler is a valid Sigaction.
+     unsafe {
+@@ -814,6 +819,11 @@ pub fn raise_default_action(sig: c_int) -> ! {
+     _exit(128 + sig)
+ }
+ 
++#[cfg(target_family = "wasm")]
++pub fn raise_default_action(_sig: c_int) -> ! {
++    std::process::abort()
++}
++
+ /// Exposes `raise_default_action` to C++ (`onExitSignal` in c-bindings.cpp).
+ #[cfg(not(windows))]
+ #[unsafe(no_mangle)]
 diff --git a/src/bun_core/output.rs b/src/bun_core/output.rs
-index ce9b6d7..0dfa888 100644
+index 27f6012..1591c43 100644
 --- a/src/bun_core/output.rs
 +++ b/src/bun_core/output.rs
-@@ -246,10 +246,7 @@ fn stdio_tty_flag(idx: usize) -> bool {
+@@ -247,10 +247,7 @@ fn stdio_tty_flag(idx: usize) -> bool {
  // ──────────────────────────────────────────────────────────────────────────
  
  /// `Source.StreamType` — `File` on native, a fixed-buffer stream on WASM.
@@ -74,7 +86,7 @@ index ce9b6d7..0dfa888 100644
  
  pub struct Source {
      pub(crate) stdout_buffer: [u8; 4096],
-@@ -273,14 +270,7 @@ impl Source {
+@@ -274,14 +271,7 @@ impl Source {
      // `File::ZEROED` is `Fd::INVALID`, so a pre-init read fails loudly
      // instead of aliasing fd 0; `FixedBufferStream` has no `ZEROED` const,
      // so the wasm32 arm spells out the empty stream field-wise.
@@ -143,34 +155,30 @@ index de70974..4d86dc8 100644
          smol_str
      }
 diff --git a/src/bun_core/string/mod.rs b/src/bun_core/string/mod.rs
-index 8934146..15df6f8 100644
+index 522a11a..f06fa32 100644
 --- a/src/bun_core/string/mod.rs
 +++ b/src/bun_core/string/mod.rs
-@@ -1170,10 +1170,16 @@ impl core::fmt::Display for EncodedSlice<'_> {
- 
+@@ -1166,9 +1166,13 @@ impl core::fmt::Display for EncodedSlice<'_> {
  // `EncodedSlice` pointer-tag scheme. Flag bits live in the pointer's high
- // byte; untagging truncates to 53 bits.
+ // byte; untagging truncates to 53 bits. Never set bit 62: C++ would take
+ // ownership of the buffer and free it (`Zig::isTaggedExternalPtr`).
 -const TAG_UTF8_BIT: usize = 1usize << 61;
--const TAG_GLOBAL_BIT: usize = 1usize << 62;
 -const TAG_UTF16_BIT: usize = 1usize << 63;
-+// The flag bits are the three highest of the pointer. On a 32-bit target that is
-+// only sound while every address is below 2^29, which the linker has to enforce
-+// with a maximum memory size.
++// the linker limits Wasm memory to keep these tag bits outside every address.
 +const TAG_UTF8_BIT: usize = 1usize << (usize::BITS - 3);
-+const TAG_GLOBAL_BIT: usize = 1usize << (usize::BITS - 2);
 +const TAG_UTF16_BIT: usize = 1usize << (usize::BITS - 1);
 +#[cfg(target_pointer_width = "64")]
  const UNTAG_MASK: usize = (1usize << 53) - 1;
 +#[cfg(not(target_pointer_width = "64"))]
 +const UNTAG_MASK: usize = TAG_UTF8_BIT - 1;
  
- /// `{tagged ptr, len}` with encoding bits (Latin-1 / UTF-8 / UTF-16 / global)
- /// in the pointer's high byte; borrows `'a`. Also the [`String`] union arm.
+ /// `{tagged ptr, len}` with encoding bits (Latin-1 / UTF-8 / UTF-16) in the
+ /// pointer's high byte; borrows `'a`. Also the [`String`] union arm.
 diff --git a/src/bun_core/util.rs b/src/bun_core/util.rs
-index b7fced6..3b3eafd 100644
+index 2ceeb18..335fb2e 100644
 --- a/src/bun_core/util.rs
 +++ b/src/bun_core/util.rs
-@@ -2762,6 +2762,11 @@ pub fn self_exe_path() -> crate::CrateResult<&'static ZStr> {
+@@ -2787,6 +2787,11 @@ pub fn self_exe_path() -> crate::CrateResult<&'static ZStr> {
              }
              Ok(ZBox::from_vec_with_nul(s.into_bytes()))
          }
@@ -182,7 +190,7 @@ index b7fced6..3b3eafd 100644
      });
      match r {
          Ok(z) => Ok(z.as_zstr()),
-@@ -4415,7 +4420,6 @@ pub fn reload_process(clear_terminal: bool, may_return: bool) {
+@@ -4437,7 +4442,6 @@ pub fn reload_process(clear_terminal: bool, may_return: bool) {
          // Bun only targets POSIX + Windows; any other target
          // is a build-time error, not a runtime panic.
          let _ = (clear_terminal, may_return);
@@ -190,7 +198,7 @@ index b7fced6..3b3eafd 100644
      }
  }
  
-@@ -5004,6 +5008,11 @@ impl Timespec {
+@@ -5026,6 +5030,11 @@ impl Timespec {
              clock_gettime_monotonic(&mut sec, &mut nsec);
              Timespec { sec, nsec }
          }
@@ -203,7 +211,7 @@ index b7fced6..3b3eafd 100644
  
      #[inline]
 diff --git a/src/errno/lib.rs b/src/errno/lib.rs
-index 2943fc5..fbb3fc2 100644
+index e0fb969..e22f4ce 100644
 --- a/src/errno/lib.rs
 +++ b/src/errno/lib.rs
 @@ -186,9 +186,9 @@ pub use freebsd_errno::*;
@@ -227,6 +235,32 @@ index 2943fc5..fbb3fc2 100644
      pub type mode_t = u32;
      /// Darwin/FreeBSD `mode_t` == `__uint16_t` in `<sys/types.h>`.
      #[cfg(any(target_os = "macos", target_os = "freebsd"))]
+diff --git a/src/sema/check/call.rs b/src/sema/check/call.rs
+index 493d7d1..bac33fa 100644
+--- a/src/sema/check/call.rs
++++ b/src/sema/check/call.rs
+@@ -3048,7 +3048,7 @@ impl<'p, 's> Checker<'p, 's> {
+         &self,
+         inferred: &[TypeId],
+         own: &[TypeId],
+-        serial: usize,
++        serial: u64,
+     ) -> Option<Vec<TypeId>> {
+         let mut names: Vec<Atom> = inferred
+             .iter()
+diff --git a/src/sema/check/expr.rs b/src/sema/check/expr.rs
+index 03c614a..8baf6e8 100644
+--- a/src/sema/check/expr.rs
++++ b/src/sema/check/expr.rs
+@@ -210,7 +210,7 @@ impl<'p, 's> Checker<'p, 's> {
+                 && let Some(unique) = c.unique_type_params(
+                     &n.inferred_type_params,
+                     &type_params,
+-                    ((file.0 as usize) << 32) | e.0 as usize,
++                    ((file.0 as u64) << 32) | e.0 as u64,
+                 )
+             {
+                 let instantiated = if unique[..] == type_params[..] {
 diff --git a/src/threading/Futex.rs b/src/threading/Futex.rs
 index a62d55c..af5c5b7 100644
 --- a/src/threading/Futex.rs
@@ -276,10 +310,10 @@ index a62d55c..af5c5b7 100644
  }
  
 diff --git a/src/windows_sys/externs.rs b/src/windows_sys/externs.rs
-index 7eff1a5..193d18b 100644
+index 16f9ee3..a2d8163 100644
 --- a/src/windows_sys/externs.rs
 +++ b/src/windows_sys/externs.rs
-@@ -1686,6 +1686,8 @@ pub fn teb() -> *mut TEB {
+@@ -1699,6 +1699,8 @@ pub fn teb() -> *mut TEB {
          core::arch::asm!("mov {}, x18", out(reg) p, options(nostack, pure, readonly));
          p
      }
@@ -288,7 +322,7 @@ index 7eff1a5..193d18b 100644
  }
  
  /// Reads the PEB pointer — `gs:[0x60]` (x64) / `TEB+0x60` (ARM64).
-@@ -1714,6 +1716,8 @@ pub fn peb() -> *const PEB {
+@@ -1727,6 +1729,8 @@ pub fn peb() -> *const PEB {
              .cast::<core::ffi::c_void>()
              .cast::<*const PEB>()
      }

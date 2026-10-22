@@ -58,6 +58,7 @@ impl SyncPluginHandler<Configuration> for BunPluginHandler {
     std::str::from_utf8(include_bytes!("../LICENSE")).unwrap().into()
   }
 
+  #[inline(always)]
   fn format(
     &mut self,
     request: SyncFormatRequest<Configuration>,

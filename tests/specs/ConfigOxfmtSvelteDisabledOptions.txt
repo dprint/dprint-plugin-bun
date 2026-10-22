@@ -1,0 +1,7 @@
+-- file.ts --
+~~ {"flavor":"oxfmt","svelte":false,"svelteSortOrder":"bad","svelteAllowShorthand":"bad","svelteIndentScriptAndStyle":"bad"} ~~
+== should ignore Svelte options when Svelte is disabled and format other languages ==
+const   a=1
+
+[expect]
+const a = 1;

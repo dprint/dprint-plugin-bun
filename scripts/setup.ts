@@ -131,9 +131,14 @@ function gateLayoutAssertions() {
   for (const file of rustFiles(vendorDir.join("src").toString())) {
     const lines = Deno.readTextFileSync(file).split("\n");
     const newLines: string[] = [];
-    for (const line of lines) {
+    for (const [index, line] of lines.entries()) {
       const indent = line.match(assertion)?.[1];
-      if (indent != null && !newLines.at(-1)?.includes("target_pointer_width")) {
+      // some const blocks define implementations as well as assertions
+      const blockEnd = indent != null && line.endsWith("{")
+        ? lines.findIndex((line, next) => next > index && line === `${indent}};`)
+        : -1;
+      const definesImpl = blockEnd !== -1 && lines.slice(index + 1, blockEnd).some(line => /^\s*impl\b/.test(line));
+      if (indent != null && !definesImpl && !newLines.at(-1)?.includes("target_pointer_width")) {
         newLines.push(`${indent}#[cfg(target_pointer_width = "64")]`);
         count++;
       }

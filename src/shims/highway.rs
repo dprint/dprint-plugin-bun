@@ -219,3 +219,124 @@ unsafe fn units<'a, T>(pointer: *const T, len: usize) -> &'a [T] {
   // SAFETY: the caller guarantees the range
   unsafe { slice::from_raw_parts(pointer, len) }
 }
+
+/// offsets after line feeds.
+///
+/// # Safety
+/// `p` is readable for `len` bytes; `out` has room for one offset per line feed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn highway_line_starts(p: *const u8, len: usize, out: *mut u32) -> usize {
+  // safety: the caller passes a slice, as a pointer and a length.
+  let text = unsafe { bytes(p, len) };
+  let mut written = 0;
+  for (i, _) in text.iter().enumerate().filter(|it| *it.1 == b'\n') {
+    // safety: `out` has room for one number per line feed in the text.
+    unsafe { out.add(written).write(i as u32 + 1) };
+    written += 1;
+  }
+  written
+}
+/// one bit per 64-byte block containing a control, non-ASCII byte or backslash.
+///
+/// # Safety
+/// `p` is readable for `len` bytes; `out` has room for `len.div_ceil(4096)` words.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn highway_odd_blocks(p: *const u8, len: usize, out: *mut u64) {
+  // safety: the caller passes a slice, as a pointer and a length.
+  let text = unsafe { bytes(p, len) };
+  for (word, blocks) in text.chunks(64 * 64).enumerate() {
+    let is_odd = |c: &u8| !matches!(c, 0x20..=0x5B | 0x5D..=0x7E | b'\t' | b'\n' | b'\r');
+    let marks = blocks.chunks(64).enumerate();
+    let marks = marks.fold(0u64, |marks, (i, block)| {
+      marks | u64::from(block.iter().any(is_odd)) << i
+    });
+    // safety: `out` has one word per 64 blocks of 64 bytes, counting partial ones.
+    unsafe { out.add(word).write(marks) };
+  }
+}
+/// bitmaps of bytes ending identifier, blank and string runs.
+///
+/// # Safety
+/// `p` is readable for `len` bytes; `out` holds three planes `plane_len` bytes apart,
+/// each with room for `len.div_ceil(64) * 8` bytes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn highway_scanner_run_stops(p: *const u8, len: usize, out: *mut u8, plane_len: usize) {
+  // safety: the caller passes a slice, as a pointer and a length.
+  let text = unsafe { bytes(p, len) };
+  // safety: `out` has three bitmaps, `plane_len` bytes apart, each with 8 bytes per 64 bytes of text.
+  let planes = unsafe { core::slice::from_raw_parts_mut(out, 2 * plane_len + len.div_ceil(64) * 8) };
+  for (block, chunk) in text.chunks(64).enumerate() {
+    let mut stops = [u64::MAX; 3];
+    for (i, &c) in chunk.iter().enumerate() {
+      let is_name = c.is_ascii_alphanumeric() || c == b'_' || c == b'$';
+      let is_blank = c == b'\t' || c == b' ';
+      let is_plain = (0x20..0x80).contains(&c) && !matches!(c, b'"' | b'\'' | b'`' | b'$' | b'\\');
+      for (plane, is_in_run) in stops.iter_mut().zip([is_name, is_blank, is_plain]) {
+        *plane &= !(u64::from(is_in_run) << i);
+      }
+    }
+    for (plane, stops) in stops.iter().enumerate() {
+      let at = plane * plane_len + block * 8;
+      planes[at..at + 8].copy_from_slice(&stops.to_le_bytes());
+    }
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use super::*;
+
+  #[test]
+  fn finds_line_starts_across_blocks() {
+    let mut text = [b'a'; 130];
+    for i in [0, 63, 64, 129] {
+      text[i] = b'\n';
+    }
+    let mut out = [0; 4];
+    let count = unsafe { highway_line_starts(text.as_ptr(), text.len(), out.as_mut_ptr()) };
+    assert_eq!(count, 4);
+    assert_eq!(out, [1, 64, 65, 130]);
+  }
+
+  #[test]
+  fn marks_odd_blocks_and_clears_padding() {
+    let mut text = vec![b'a'; 4097];
+    text[63] = b'\\';
+    text[4096] = 0x80;
+    let mut out = [u64::MAX; 2];
+    unsafe { highway_odd_blocks(text.as_ptr(), text.len(), out.as_mut_ptr()) };
+    assert_eq!(out, [1, 1]);
+    for byte in 0..=255 {
+      let mut out = [0];
+      unsafe { highway_odd_blocks(&byte, 1, out.as_mut_ptr()) };
+      let plain = matches!(byte, 0x20..=0x5B | 0x5D..=0x7E | b'\t' | b'\n' | b'\r');
+      assert_eq!(out[0], u64::from(!plain), "{byte}");
+    }
+  }
+
+  #[test]
+  fn scanner_stops_cover_all_bytes_and_padding() {
+    let text = (0..=255).chain(*b"a").collect::<Vec<u8>>();
+    let plane_len = text.len().div_ceil(64) * 8;
+    let mut out = vec![0; plane_len * 3];
+    unsafe { highway_scanner_run_stops(text.as_ptr(), text.len(), out.as_mut_ptr(), plane_len) };
+    for (i, &byte) in text.iter().enumerate() {
+      let expected = [
+        !(byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'$')),
+        !matches!(byte, b' ' | b'\t'),
+        !(0x20..0x80).contains(&byte) || matches!(byte, b'"' | b'\'' | b'`' | b'$' | b'\\'),
+      ];
+      for (plane, expected) in expected.into_iter().enumerate() {
+        assert_eq!(out[plane * plane_len + i / 8] >> (i % 8) & 1, u8::from(expected));
+      }
+    }
+    for plane in 0..3 {
+      assert_eq!(out[plane * plane_len + 32], if plane == 1 { 0xFF } else { 0xFE });
+      assert!(
+        out[plane * plane_len + 33..(plane + 1) * plane_len]
+          .iter()
+          .all(|&it| it == 0xFF)
+      );
+    }
+  }
+}

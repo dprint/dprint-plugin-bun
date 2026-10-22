@@ -1,0 +1,22 @@
+-- file.svelte --
+== should format Svelte ==
+<script>let a=1</script><p>{a}</p>
+
+[expect]
+<script>
+  let a = 1;
+</script>
+
+<p>{a}</p>
+
+== should format Svelte markup and styles ==
+{#if ok}<div class="a">{value+1}</div>{/if}<style>.a{color:red}</style>
+
+[expect]
+{#if ok}<div class="a">{value + 1}</div>{/if}
+
+<style>
+  .a {
+    color: red;
+  }
+</style>

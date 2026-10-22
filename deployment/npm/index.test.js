@@ -3,6 +3,8 @@ const assert = require("assert");
 const createFromBuffer = require("@dprint/formatter").createFromBuffer;
 const getBuffer = require("./index").getBuffer;
 
+assert.deepStrictEqual(WebAssembly.Module.imports(new WebAssembly.Module(getBuffer())), []);
+
 const formatter = createFromBuffer(getBuffer());
 const result = formatter.formatText({
   filePath: "file.js",
@@ -23,6 +25,7 @@ for (
     ["file.vue", "<script>\nconst   a=1\n</script>\n", "<script>\nconst a = 1;\n</script>\n"],
     ["file.ts", "const a = css`a{b:c}`;", "const a = css`\n  a {\n    b: c;\n  }\n`;\n"],
     ["file.hbs", "<div   class=\"a\"></div>", "<div class=\"a\"></div>"],
+    ["file.svelte", "<script>let a=1</script><p>{a}</p>", "<script>\n  let a = 1;\n</script>\n\n<p>{a}</p>\n"],
     // nested deep enough to need most of the stack
     ["file.js", "a(".repeat(500) + ")".repeat(500), null],
   ]
@@ -48,5 +51,5 @@ assert.strictEqual(
 // a syntax error is an error with where it is
 assert.throws(
   () => formatter.formatText({ filePath: "file.ts", fileText: "const = ;" }),
-  /SyntaxError.*\(1:7\)/,
+  /error:[\s\S]*file\.ts:1:7/,
 );

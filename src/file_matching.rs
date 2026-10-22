@@ -60,6 +60,7 @@ const EXTENSIONS: &[(Language, &[&str])] = &[
   (Language::Vue, &["vue"]),
   (Language::Mjml, &["mjml"]),
   (Language::Toml, &["toml"]),
+  (Language::Svelte, &["svelte"]),
 ];
 
 /// Files that are matched by their name, most of which are configuration

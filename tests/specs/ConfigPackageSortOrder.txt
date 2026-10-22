@@ -1,0 +1,11 @@
+-- package.json --
+~~ {"plugins":["prettier-plugin-packagejson"],"packageSortOrder":["version","name"]} ~~
+== should sort package keys ==
+{"name":"x","version":"1","description":"test"}
+
+[expect]
+{
+  "version": "1",
+  "name": "x",
+  "description": "test"
+}

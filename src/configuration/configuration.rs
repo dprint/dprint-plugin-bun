@@ -70,10 +70,11 @@ pub enum Language {
   Vue,
   Mjml,
   Toml,
+  Svelte,
 }
 
 impl Language {
-  pub const ALL: [Language; 17] = [
+  pub const ALL: [Language; 18] = [
     Language::JavaScript,
     Language::TypeScript,
     Language::Json,
@@ -91,6 +92,7 @@ impl Language {
     Language::Vue,
     Language::Mjml,
     Language::Toml,
+    Language::Svelte,
   ];
 
   /// The name of the option that decides if the language's files are formatted.
@@ -113,6 +115,7 @@ impl Language {
       Language::Vue => "vue.enabled",
       Language::Mjml => "mjml.enabled",
       Language::Toml => "toml.enabled",
+      Language::Svelte => "svelte.enabled",
     }
   }
 }

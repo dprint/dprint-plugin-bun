@@ -91,6 +91,7 @@ const OTHER_OPTIONS: &[&str] = &[
   "parser",
   // which of the plugins of Prettier that sort imports to sort like
   "plugins",
+  "packageSortOrder",
   // @trivago/prettier-plugin-sort-imports and @ianvs/prettier-plugin-sort-imports
   "importOrder",
   "importOrderParserPlugins",
@@ -112,6 +113,11 @@ const OTHER_OPTIONS: &[&str] = &[
   "tsconfig.jsxFactory",
   "tsconfig.jsxFragmentFactory",
   "tsconfig.reactNamespace",
+  // svelte
+  "svelteSortOrder",
+  "svelteAllowShorthand",
+  "svelteIndentScriptAndStyle",
+  "svelte",
   // oxfmt
   "sortImports",
   "experimentalSortImports",

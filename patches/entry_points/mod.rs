@@ -28,7 +28,10 @@ pub fn check_config_for_plugin(config: &[u8], is_oxfmt: bool) -> Result<(), Vec<
 
 /// Whether the file at `path` is in a language that the formatter has. For dprint-plugin-bun.
 pub fn is_formatted_for_plugin(path: &[u8], config: &[u8], is_oxfmt: bool) -> bool {
-  resolved_for_plugin(config, is_oxfmt).is_ok_and(|resolved| Kind::with_options(path, &resolved.options).is_some())
+  resolved_for_plugin(config, is_oxfmt).is_ok_and(|resolved| {
+    Kind::with_options(path, &resolved.options)
+      .is_some_and(|kind| kind != Kind::Svelte || resolved.options.svelte.is_on)
+  })
 }
 
 /// The text of the file at `path` formatted with `config`, the way `bun format` does it, or else why the file is
@@ -41,34 +44,32 @@ pub fn format_for_plugin(
   range: Option<(u32, u32)>,
 ) -> Result<Vec<u8>, Vec<u8>> {
   let resolved = resolved_for_plugin(config, is_oxfmt)?;
-  let in_range;
-  let resolved = match range {
-    Some((start, end)) => {
-      in_range = Resolved {
-        options: FormatOptions {
-          range_start: Some(start),
-          range_end: Some(end),
-          ..resolved.options.clone()
-        },
-        omits_final_newline: resolved.omits_final_newline,
-        has_unsupported_option: false,
-      };
-      &in_range
-    }
-    None => &*resolved,
+  let mut resolved = Resolved {
+    options: resolved.options.clone(),
+    omits_final_newline: resolved.omits_final_newline,
+    ..Resolved::default()
   };
+  let _ = resolved.options.set(b"filepath", path);
+  if let Some((start, end)) = range {
+    resolved.options.range_start = Some(start);
+    resolved.options.range_end = Some(end);
+  }
   let names = Session::new();
   format(
     path,
     text,
-    resolved,
+    &resolved,
     (&Interner::new_in(&names), &names),
     &mut Scratches::default(),
     true,
   )
   .map(|(formatted, _)| formatted)
   .map_err(|failure| match failure {
-    Failure::Syntax(message) | Failure::Unread(message) => message,
-    Failure::Bug(what) | Failure::Loss(what) => what.as_bytes().to_vec(),
+    Failure::Syntax(problem) => problem.print(path, bun_ast::Kind::Err, false),
+    Failure::Unread(problem) => problem.print(path, bun_ast::Kind::Warn, false),
+    Failure::Bug => Problem::new(b"The formatter failed, so this file was not formatted. This is a bug in Bun")
+      .print(path, bun_ast::Kind::Err, false),
+    Failure::Changed(what) => Problem::new(&[b"Not formatted, because ", what.as_bytes()].concat())
+      .print(path, bun_ast::Kind::Err, false),
   })
 }

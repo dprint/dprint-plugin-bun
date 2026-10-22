@@ -3,6 +3,49 @@
   "$id": "https://plugins.dprint.dev/dprint/dprint-plugin-bun/0.0.0/schema.json",
   "type": "object",
   "properties": {
+    "svelte.enabled": {
+      "description": "Whether to format Svelte files.",
+      "type": "boolean",
+      "default": true
+    },
+    "svelteSortOrder": {
+      "description": "The order of the parts of a Svelte component, separated by hyphens, or none.",
+      "type": "string",
+      "default": "options-scripts-markup-styles"
+    },
+    "svelteAllowShorthand": {
+      "description": "Whether to use shorthand attributes in Svelte.",
+      "type": "boolean",
+      "default": true
+    },
+    "svelteIndentScriptAndStyle": {
+      "description": "Whether to indent scripts and styles in Svelte.",
+      "type": "boolean",
+      "default": true
+    },
+    "svelte": {
+      "description": "Svelte options in the oxfmt flavor.",
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sortOrder": {
+              "type": "string"
+            },
+            "allowShorthand": {
+              "type": "boolean"
+            },
+            "indentScriptAndStyle": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "flavor": {
       "description": "Whose formatter Bun stands in for: the options are the ones of its configuration file, and the output is its output where the two differ.",
       "type": "string",
@@ -337,14 +380,17 @@
       "type": "string"
     },
     "plugins": {
-      "description": "The plugins of Prettier that sort imports to sort imports like. They are built in, and do not have to be installed. No other plugin can be used.",
+      "description": "The built-in implementations of Prettier plugins to use. They do not have to be installed.",
       "type": "array",
       "items": {
         "type": "string",
         "enum": [
           "@trivago/prettier-plugin-sort-imports",
           "@ianvs/prettier-plugin-sort-imports",
-          "prettier-plugin-organize-imports"
+          "prettier-plugin-organize-imports",
+          "prettier-plugin-svelte",
+          "prettier-plugin-packagejson",
+          "@prettier/plugin-oxc"
         ]
       }
     },
@@ -572,6 +618,13 @@
       "description": "Whether to end a file with a line break. Only with the flavor \"oxfmt\".",
       "type": "boolean",
       "default": true
+    },
+    "packageSortOrder": {
+      "description": "The package.json keys to put first when prettier-plugin-packagejson is listed in plugins.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   }
 }

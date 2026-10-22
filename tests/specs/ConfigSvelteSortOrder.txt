@@ -1,0 +1,11 @@
+-- file.svelte --
+~~ svelteSortOrder: markup-scripts-styles-options ~~
+== should format Svelte ==
+<script>let a=1</script><p>{a}</p>
+
+[expect]
+<p>{a}</p>
+
+<script>
+  let a = 1;
+</script>

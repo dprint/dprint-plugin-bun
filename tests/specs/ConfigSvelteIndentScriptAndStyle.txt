@@ -1,0 +1,9 @@
+-- file.svelte --
+~~ svelteIndentScriptAndStyle: false ~~
+== should format Svelte ==
+<script>let a=1</script>
+
+[expect]
+<script>
+let a = 1;
+</script>

@@ -1,0 +1,11 @@
+-- file.svelte --
+~~ {"flavor":"oxfmt","svelte":{"sortOrder":"markup-scripts-styles-options","allowShorthand":false,"indentScriptAndStyle":false}} ~~
+== should format Svelte ==
+<script>let a=1</script><Widget {a} />
+
+[expect]
+<Widget a={a} />
+
+<script>
+let a = 1;
+</script>

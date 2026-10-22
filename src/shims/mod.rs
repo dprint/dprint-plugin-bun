@@ -7,5 +7,6 @@ mod highway;
 mod mimalloc;
 mod runtime;
 mod simdutf;
+mod string_width;
 mod wtf;
 mod yarr;

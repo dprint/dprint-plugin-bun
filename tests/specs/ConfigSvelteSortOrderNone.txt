@@ -1,0 +1,10 @@
+-- file.svelte --
+~~ svelteSortOrder: none ~~
+== should preserve component order ==
+<p>{a}</p><script>let a=1</script>
+
+[expect]
+<p>{a}</p>
+<script>
+  let a = 1;
+</script>

@@ -134,6 +134,7 @@ pub mod O {
   pub const EXCL: i32 = 0o200;
   pub const TRUNC: i32 = 0o1000;
   pub const APPEND: i32 = 0o2000;
+  pub const NONBLOCK: i32 = 0o4000;
   pub const DIRECTORY: i32 = 0o200000;
   pub const NOFOLLOW: i32 = 0o400000;
   pub const CLOEXEC: i32 = 0o2000000;
@@ -245,6 +246,12 @@ pub mod dir_iterator {
   pub struct IteratorResult {
     pub name: Name,
     pub kind: EntryKind,
+  }
+
+  impl IteratorResult {
+    pub fn link_is_directory(&self) -> Option<bool> {
+      None
+    }
   }
 
   pub struct WrappedIterator;
@@ -362,6 +369,26 @@ pub fn read(_fd: Fd, _buf: &mut [u8]) -> Maybe<usize> {
 
 pub fn write(_fd: Fd, _bytes: &[u8]) -> Maybe<usize> {
   Err(unsupported(Tag::write))
+}
+
+pub fn update_nonblocking(_fd: Fd, _nonblocking: bool) -> Maybe<()> {
+  Err(unsupported(Tag::write))
+}
+
+pub fn pwrite(_fd: Fd, _buf: &[u8], _off: i64) -> Maybe<usize> {
+  Err(unsupported(Tag::write))
+}
+
+pub fn ftruncate(_fd: Fd, _len: i64) -> Maybe<()> {
+  Err(unsupported(Tag::write))
+}
+
+pub fn readlink(_path: &ZStr, _buf: &mut [u8]) -> Maybe<usize> {
+  Err(unsupported(Tag::read))
+}
+
+pub fn self_process_memory_usage() -> Option<usize> {
+  None
 }
 
 fn unsupported(tag: Tag) -> Error {

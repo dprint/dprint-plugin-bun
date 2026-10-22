@@ -1,0 +1,7 @@
+-- file.svelte --
+~~ {"flavor":"oxfmt","svelte.enabled":false,"parser":"svelte"} ~~
+== should preserve unformatted Svelte when disabled with an explicit parser ==
+<script>let a=1</script><p   >{a}</p>
+
+[expect]
+<script>let a=1</script><p   >{a}</p>

@@ -80,7 +80,7 @@ fn should_fail_on_parse_error() {
 fn should_have_position_in_parse_errors() {
   let config = Configuration::default();
   let err = format_text(&PathBuf::from("file.ts"), "const a = 1;\nconst = ;\n", &config).unwrap_err();
-  assert!(err.to_string().contains("(2:7)"), "{err}");
+  assert!(err.to_string().contains("file.ts:2:7"), "{err}");
 }
 
 #[test]
@@ -143,7 +143,7 @@ fn should_have_diagnostics_for_invalid_config() {
     (serde_json::json!({ "quoteProps": "asNeeded" }), "quoteProps"),
     (serde_json::json!({ "unknown": true }), "unknown"),
     (serde_json::json!({ "markdown.enabled": "no" }), "markdown.enabled"),
-    (serde_json::json!({ "svelte.enabled": false }), "svelte.enabled"),
+    (serde_json::json!({ "svelte.enabled": "no" }), "svelte.enabled"),
   ] {
     let diagnostics = resolve(config.clone()).diagnostics;
     assert_eq!(
@@ -200,9 +200,24 @@ fn should_not_have_diagnostics_for_the_defaults() {
 fn should_have_diagnostics_for_what_bun_refuses() {
   for (config, property_name, message) in [
     (
-      serde_json::json!({ "plugins": ["prettier-plugin-svelte"] }),
+      serde_json::json!({ "svelteSortOrder": "scripts-markup-styles" }),
+      "svelteSortOrder",
+      "Invalid svelteSortOrder value: scripts-markup-styles.",
+    ),
+    (
+      serde_json::json!({ "flavor": "oxfmt", "svelte": { "allowShorthand": "yes" } }),
+      "svelte",
+      "Invalid svelte.allowShorthand value: yes.",
+    ),
+    (
+      serde_json::json!({ "plugins": ["prettier-plugin-tailwindcss"] }),
       "plugins",
-      "These plugins of Prettier cannot be loaded: prettier-plugin-svelte.",
+      "These plugins of Prettier cannot be loaded: prettier-plugin-tailwindcss.",
+    ),
+    (
+      serde_json::json!({ "plugins": ["prettier-plugin-astro"] }),
+      "plugins",
+      "These plugins of Prettier cannot be loaded: prettier-plugin-astro.",
     ),
     (
       serde_json::json!({ "importOrder": ["^[./]"] }),
@@ -325,6 +340,7 @@ fn should_format_toml_with_the_options_of_prettier() {
 #[test]
 fn should_not_format_disabled_languages() {
   let config = resolve(serde_json::json!({
+    "svelte.enabled": false,
     "markdown.enabled": false,
     "typescript.enabled": false,
     "yaml.enabled": false,
@@ -334,7 +350,7 @@ fn should_not_format_disabled_languages() {
   assert!(config.diagnostics.is_empty());
   let config = config.config;
   let extensions = file_extensions(&config);
-  for ext in ["md", "markdown", "ts", "tsx", "yaml", "yml"] {
+  for ext in ["md", "markdown", "ts", "tsx", "yaml", "yml", "svelte"] {
     assert!(!extensions.contains(&ext.to_string()), "{ext}");
   }
   for ext in ["mdx", "js", "jsx", "css", "json"] {
@@ -345,6 +361,7 @@ fn should_not_format_disabled_languages() {
   assert!(names.contains(&".babelrc".to_string()));
 
   for (file_name, text) in [
+    ("file.svelte", "<p   >hello</p>"),
     ("file.md", "#   Title\n"),
     ("FILE.MD", "#   Title\n"),
     ("file.ts", "const   a = 1\n"),

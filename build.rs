@@ -6,6 +6,7 @@ use std::fs;
 use std::path::Path;
 
 fn main() {
+  generate_string_width_table();
   let specs_dir = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("tests/specs");
   println!("cargo:rerun-if-changed={}", specs_dir.display());
 
@@ -25,4 +26,27 @@ fn main() {
   }
   code.push_str("]\n");
   fs::write(Path::new(&env::var("OUT_DIR").unwrap()).join("specs.rs"), code).unwrap();
+}
+
+/// copies Bun's Unicode classification tables so width calculations use its Unicode version.
+fn generate_string_width_table() {
+  let path = "vendor/bun/src/jsc/bindings/stringWidthTables.h";
+  println!("cargo:rerun-if-changed={path}");
+  let header = fs::read_to_string(path).unwrap();
+  let mut code = String::new();
+  for (stage, ty) in [(1, "u16"), (2, "u8"), (3, "u8")] {
+    let name = format!("kGraphemeBreakStage{stage}");
+    let (_, declaration) = header.split_once(&name).unwrap();
+    let (length, values) = declaration.split_once(" = {").unwrap();
+    let (values, _) = values.split_once("};").unwrap();
+    code.push_str(&format!(
+      "static STAGE{stage}: [{ty}; {}] = [{values}];\n",
+      &length[1..length.len() - 1]
+    ));
+  }
+  fs::write(
+    Path::new(&env::var("OUT_DIR").unwrap()).join("string_width_table.rs"),
+    code,
+  )
+  .unwrap();
 }
