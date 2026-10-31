@@ -34,7 +34,7 @@ wasm = ["dprint-core/wasm"]
 [dependencies]
 bun_format = { path = "vendor/bun/src/format" }
 bun_lint_driver = { path = "vendor/bun/src/lint/driver" }
-dprint-core = { version = "0.73.0", default-features = false }
+dprint-core = { version = "0.74.0", default-features = false }
 memchr = "2.8"
 regress = { version = "0.12", features = ["utf16"] }
 serde = { version = "1.0.210", features = ["derive"] }
