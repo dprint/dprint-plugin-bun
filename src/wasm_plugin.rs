@@ -51,6 +51,7 @@ impl SyncPluginHandler<Configuration> for BunPluginHandler {
         version
       ),
       update_url: Some("https://plugins.dprint.dev/dprint/dprint-plugin-bun/latest.json".to_string()),
+      supports_range_formatting: Some(true),
     }
   }
 
