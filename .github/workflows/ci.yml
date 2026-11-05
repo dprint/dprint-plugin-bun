@@ -46,6 +46,11 @@ jobs:
     - name: Test
       run: cargo test
 
+    # adds the outputs of the code examples to the config schema, which also
+    # checks that the plugin accepts every property in it
+    - name: Generate config schema
+      run: deno run -A --minimum-dependency-age=0 jsr:@dprint/automation@0.14.3/tasks/publish-schema target/wasm32-unknown-unknown/release/dprint_plugin_bun.wasm deployment/schema.json --extension ts
+
     - name: Get tag version
       if: startsWith(github.ref, 'refs/tags/')
       id: get_tag_version

@@ -2,6 +2,156 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://plugins.dprint.dev/dprint/dprint-plugin-bun/0.0.0/schema.json",
   "type": "object",
+  "x-playground": {
+    "input": [
+      "import {readFile} from 'node:fs/promises'",
+      "type Task={id:number,title:string,done?:boolean}",
+      "",
+      "const tasks:Task[]=[{id:1,title:'Write the report'},{id:2,title:\"Review the budget\",done:true}]",
+      "",
+      "export async function loadTasks(path:string):Promise<Task[]>{",
+      "    const text=await readFile(path,'utf8')",
+      "  return JSON.parse(text).filter((task:Task)=>!task.done)",
+      "}",
+      "",
+      "class TaskQueue{",
+      "  private items=new Map<number,Task>()",
+      "  add(task:Task){this.items.set(task.id,task);return this}",
+      "  get size(){return this.items.size}",
+      "}",
+      "",
+      "const pending=tasks.filter(t=>!t.done).map(t=>t.title.toUpperCase())",
+      "console.log(`${pending.length} pending tasks`,pending)"
+    ]
+  },
+  "x-sections": [
+    {
+      "title": "General",
+      "description": "The flavor, the width and indentation of lines, and what is formatted in all the languages.",
+      "properties": [
+        "flavor",
+        "printWidth",
+        "tabWidth",
+        "useTabs",
+        "endOfLine",
+        "embeddedLanguageFormatting",
+        "parser"
+      ]
+    },
+    {
+      "title": "Pragmas",
+      "description": "The comments at the top of a file that decide whether it is formatted.",
+      "properties": [
+        "insertPragma",
+        "requirePragma",
+        "checkIgnorePragma"
+      ]
+    },
+    {
+      "title": "JavaScript and TypeScript",
+      "description": "The punctuation, spaces and line breaks of JavaScript and TypeScript.",
+      "properties": [
+        "semi",
+        "singleQuote",
+        "quoteProps",
+        "trailingComma",
+        "bracketSpacing",
+        "arrowParens",
+        "objectWrap",
+        "experimentalOperatorPosition",
+        "experimentalTernaries"
+      ]
+    },
+    {
+      "title": "JSX, HTML and Vue",
+      "description": "The quotes, attributes and white space of elements.",
+      "properties": [
+        "jsxSingleQuote",
+        "bracketSameLine",
+        "singleAttributePerLine",
+        "htmlWhitespaceSensitivity",
+        "vueIndentScriptAndStyle"
+      ]
+    },
+    {
+      "title": "Markdown",
+      "description": "The wrapping of prose.",
+      "properties": [
+        "proseWrap"
+      ]
+    },
+    {
+      "title": "Svelte",
+      "description": "The formatting of Svelte components. With the flavor \"oxfmt\", these can also be set in `svelte`.",
+      "properties": [
+        "svelteSortOrder",
+        "svelteAllowShorthand",
+        "svelteIndentScriptAndStyle",
+        "svelte"
+      ]
+    },
+    {
+      "title": "Prettier plugins",
+      "description": "The built-in plugins of Prettier and their options, which sort imports and `package.json` files.",
+      "properties": [
+        "plugins",
+        "importOrder",
+        "importOrderParserPlugins",
+        "importOrderSeparation",
+        "importOrderSortSpecifiers",
+        "importOrderGroupNamespaceSpecifiers",
+        "importOrderCaseInsensitive",
+        "importOrderSideEffects",
+        "importOrderSortByLength",
+        "importOrderImportAttributesKeyword",
+        "importOrderExclude",
+        "importOrderTypeScriptVersion",
+        "importOrderCaseSensitive",
+        "importOrderSafeSideEffects",
+        "organizeImportsSkipDestructiveCodeActions",
+        "organizeImportsTypeOrder",
+        "tsconfig.jsx",
+        "tsconfig.jsxFactory",
+        "tsconfig.jsxFragmentFactory",
+        "tsconfig.reactNamespace",
+        "packageSortOrder"
+      ]
+    },
+    {
+      "title": "oxfmt",
+      "description": "The options that only the flavor \"oxfmt\" has.",
+      "properties": [
+        "sortImports",
+        "sortPackageJson",
+        "jsdoc",
+        "insertFinalNewline"
+      ]
+    },
+    {
+      "title": "Languages",
+      "description": "Which languages this plugin formats. A disabled language's files are left to the next plugin that matches them.",
+      "properties": [
+        "javascript.enabled",
+        "typescript.enabled",
+        "json.enabled",
+        "jsonc.enabled",
+        "json5.enabled",
+        "css.enabled",
+        "scss.enabled",
+        "less.enabled",
+        "yaml.enabled",
+        "markdown.enabled",
+        "mdx.enabled",
+        "graphql.enabled",
+        "handlebars.enabled",
+        "html.enabled",
+        "vue.enabled",
+        "mjml.enabled",
+        "svelte.enabled",
+        "toml.enabled"
+      ]
+    }
+  ],
   "properties": {
     "svelte.enabled": {
       "description": "Whether to format Svelte files.",
@@ -16,30 +166,51 @@
     "svelteAllowShorthand": {
       "description": "Whether to use shorthand attributes in Svelte.",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "x-example": {
+        "extension": "svelte",
+        "input": [
+          "<Widget value={value} />"
+        ]
+      }
     },
     "svelteIndentScriptAndStyle": {
       "description": "Whether to indent scripts and styles in Svelte.",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "x-example": {
+        "extension": "svelte",
+        "input": [
+          "<script>",
+          "let count = 0;",
+          "</script>",
+          "",
+          "<button on:click={() => count++}>{count}</button>"
+        ]
+      }
     },
     "svelte": {
       "description": "Svelte options in the oxfmt flavor.",
       "oneOf": [
         {
+          "description": "`true` formats Svelte files with the default options, and `false` leaves them as they are.",
           "type": "boolean"
         },
         {
+          "description": "The options of Svelte.",
           "type": "object",
           "properties": {
             "sortOrder": {
-              "type": "string"
+              "type": "string",
+              "description": "The order of the parts of a Svelte component, separated by hyphens, or none. Like `svelteSortOrder`."
             },
             "allowShorthand": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Whether to use shorthand attributes. Like `svelteAllowShorthand`."
             },
             "indentScriptAndStyle": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Whether to indent scripts and styles. Like `svelteIndentScriptAndStyle`."
             }
           },
           "additionalProperties": false
@@ -59,22 +230,37 @@
           "const": "oxfmt",
           "description": "oxfmt: lines are 100 wide by default and `package.json` files are sorted."
         }
-      ]
+      ],
+      "x-example": {
+        "input": [
+          "const total = calculateTotal(order.items, order.shippingAddress, { includeTax: true });"
+        ]
+      }
     },
     "printWidth": {
       "description": "The line width that the formatter wraps at. Defaults to the `lineWidth` of the global configuration, and to 100 with the flavor \"oxfmt\".",
       "default": 80,
-      "type": "number"
+      "type": "integer",
+      "minimum": 0
     },
     "tabWidth": {
       "description": "The number of spaces per level of indentation. Defaults to the `indentWidth` of the global configuration.",
       "default": 2,
-      "type": "number"
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
     },
     "useTabs": {
       "description": "Whether to indent with tabs instead of spaces. Defaults to the `useTabs` of the global configuration.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "input": [
+          "function run() {",
+          "  start();",
+          "}"
+        ]
+      }
     },
     "endOfLine": {
       "description": "The kind of line ending. Defaults to the `newLineKind` of the global configuration.",
@@ -102,17 +288,35 @@
     "semi": {
       "description": "Whether to print semicolons at the ends of statements.",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "x-example": {
+        "input": [
+          "const value = 5",
+          ";[1, 2].forEach(log)"
+        ]
+      }
     },
     "singleQuote": {
       "description": "Whether to use single quotes instead of double quotes.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "input": [
+          "const name = \"dprint\";",
+          "const text = 'plugin';"
+        ]
+      }
     },
     "jsxSingleQuote": {
       "description": "Whether to use single quotes instead of double quotes in JSX.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "extension": "tsx",
+        "input": [
+          "const logo = <img src=\"/logo.png\" alt='Logo' />;"
+        ]
+      }
     },
     "quoteProps": {
       "description": "When the properties of objects are quoted.",
@@ -131,7 +335,12 @@
           "const": "preserve",
           "description": "Keep the quotes as they are written."
         }
-      ]
+      ],
+      "x-example": {
+        "input": [
+          "const headers = { \"accept\": \"json\", timeout: 30, \"x-request-id\": id };"
+        ]
+      }
     },
     "trailingComma": {
       "description": "Where trailing commas are printed in what is on multiple lines.",
@@ -150,17 +359,36 @@
           "const": "none",
           "description": "Nowhere."
         }
-      ]
+      ],
+      "x-example": {
+        "input": [
+          "function createUser(firstName: string, lastName: string, email: string, age: number) {",
+          "  return { firstName, lastName, email, age, createdAt: new Date(), updatedAt: new Date() };",
+          "}"
+        ]
+      }
     },
     "bracketSpacing": {
       "description": "Whether to print spaces between the brackets of object literals.",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "x-example": {
+        "input": [
+          "import {readFile} from \"node:fs\";",
+          "const point = {x: 1, y: 2};"
+        ]
+      }
     },
     "bracketSameLine": {
       "description": "Whether to put the `>` of a multi-line HTML or JSX element at the end of the last line instead of alone on the next line.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "extension": "tsx",
+        "input": [
+          "const button = <button className=\"primary large\" type=\"submit\" onClick={() => save(form)} disabled={busy}>Save</button>;"
+        ]
+      }
     },
     "arrowParens": {
       "description": "Whether the only parameter of an arrow function has parentheses.",
@@ -175,7 +403,12 @@
           "const": "avoid",
           "description": "Omit the parentheses when possible. Example: `x => x`"
         }
-      ]
+      ],
+      "x-example": {
+        "input": [
+          "const double = (x) => x * 2;"
+        ]
+      }
     },
     "objectWrap": {
       "description": "How object literals are wrapped when they could fit on one line.",
@@ -190,12 +423,24 @@
           "const": "collapse",
           "description": "Fit an object on a single line when possible."
         }
-      ]
+      ],
+      "x-example": {
+        "input": [
+          "const user = {",
+          "  name: \"Ada\", age: 36 };"
+        ]
+      }
     },
     "singleAttributePerLine": {
       "description": "Whether to put each attribute of an HTML, Vue or JSX element on its own line when there is more than one.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "extension": "tsx",
+        "input": [
+          "const input = <input type=\"text\" name=\"email\" required />;"
+        ]
+      }
     },
     "experimentalOperatorPosition": {
       "description": "Where a binary operator is printed when its expression is wrapped.",
@@ -210,12 +455,22 @@
           "const": "end",
           "description": "At the end of the previous line."
         }
-      ]
+      ],
+      "x-example": {
+        "input": [
+          "const total = basePrice * quantity + shippingCost + handlingFee - discountAmount + taxAmount;"
+        ]
+      }
     },
     "experimentalTernaries": {
       "description": "Whether to format ternaries with the question mark at the end of the line of the condition.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "input": [
+          "const animal = isBird ? \"bird\" : isCat ? \"cat\" : isDog ? \"dog\" : \"some other kind of animal\";"
+        ]
+      }
     },
     "embeddedLanguageFormatting": {
       "description": "Whether to format code that is embedded in a file. Example: CSS in a template literal of JavaScript.",
@@ -230,7 +485,12 @@
           "const": "off",
           "description": "Never format embedded code."
         }
-      ]
+      ],
+      "x-example": {
+        "input": [
+          "const button = css`color:white;background:blue`;"
+        ]
+      }
     },
     "proseWrap": {
       "description": "How the prose of Markdown is wrapped.",
@@ -249,7 +509,15 @@
           "const": "preserve",
           "description": "Keep the prose as it is written."
         }
-      ]
+      ],
+      "x-example": {
+        "extension": "md",
+        "input": [
+          "A paragraph that is longer than the print width, which is eighty characters by default.",
+          "This line",
+          "is broken early."
+        ]
+      }
     },
     "htmlWhitespaceSensitivity": {
       "description": "How the white space of HTML, Vue and Handlebars is handled.",
@@ -268,27 +536,63 @@
           "const": "ignore",
           "description": "White space around all tags is insignificant."
         }
-      ]
+      ],
+      "x-example": {
+        "extension": "html",
+        "input": [
+          "<span class=\"badge badge-primary\">A label that is long enough to be wrapped</span>",
+          "<div class=\"card card-primary\">A paragraph that is long enough to be wrapped</div>"
+        ]
+      }
     },
     "vueIndentScriptAndStyle": {
       "description": "Whether to indent the code inside the `<script>` and `<style>` tags of Vue files.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "extension": "vue",
+        "input": [
+          "<script>",
+          "export default { name: \"App\" };",
+          "</script>",
+          "",
+          "<template>",
+          "  <div>{{ name }}</div>",
+          "</template>"
+        ]
+      }
     },
     "insertPragma": {
       "description": "Whether to insert a `@format` comment at the top of formatted files.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "input": [
+          "const value = 5;"
+        ]
+      }
     },
     "requirePragma": {
       "description": "Whether to only format the files that have a `@format` or `@prettier` comment at the top.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "input": [
+          "const  value=5"
+        ]
+      }
     },
     "checkIgnorePragma": {
       "description": "Whether to not format the files that have a `@noformat` or `@noprettier` comment at the top.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "input": [
+          "/** @noformat */",
+          "",
+          "const  value=5"
+        ]
+      }
     },
     "javascript.enabled": {
       "description": "Whether to format JavaScript and JSX files.",
@@ -411,44 +715,134 @@
     "importOrderSeparation": {
       "description": "Whether to have an empty line between the groups of imports. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "config": {
+          "plugins": [
+            "@trivago/prettier-plugin-sort-imports"
+          ],
+          "importOrder": [
+            "^@/(.*)$",
+            "^[./]"
+          ]
+        },
+        "input": [
+          "import { a } from \"./a\";",
+          "import { db } from \"@/db\";",
+          "import React from \"react\";"
+        ]
+      }
     },
     "importOrderSortSpecifiers": {
       "description": "Whether to sort the specifiers of an import. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "config": {
+          "plugins": [
+            "@trivago/prettier-plugin-sort-imports"
+          ]
+        },
+        "input": [
+          "import { useState, useEffect, type FC } from \"react\";"
+        ]
+      }
     },
     "importOrderGroupNamespaceSpecifiers": {
       "description": "Whether to put the imports of a namespace at the top of their group. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "config": {
+          "plugins": [
+            "@trivago/prettier-plugin-sort-imports"
+          ]
+        },
+        "input": [
+          "import { a } from \"./a\";",
+          "import * as b from \"./b\";"
+        ]
+      }
     },
     "importOrderCaseInsensitive": {
       "description": "Whether to sort without regard to case. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "config": {
+          "plugins": [
+            "@trivago/prettier-plugin-sort-imports"
+          ]
+        },
+        "input": [
+          "import { b } from \"Beta\";",
+          "import { a } from \"alpha\";"
+        ]
+      }
     },
     "importOrderSideEffects": {
       "description": "Whether to sort the imports that are only for their side effects. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "x-example": {
+        "config": {
+          "plugins": [
+            "@trivago/prettier-plugin-sort-imports"
+          ]
+        },
+        "input": [
+          "import { b } from \"./b\";",
+          "import \"./setup\";",
+          "import { a } from \"./a\";"
+        ]
+      }
     },
     "importOrderSortByLength": {
       "description": "Whether to sort the imports by their length. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
-      "enum": [
-        "asc",
-        "desc",
-        null
+      "default": null,
+      "oneOf": [
+        {
+          "const": "asc",
+          "description": "Shorter imports first."
+        },
+        {
+          "const": "desc",
+          "description": "Longer imports first."
+        },
+        {
+          "const": null,
+          "description": "In alphabetical order instead of by length."
+        }
       ],
-      "default": null
+      "x-example": {
+        "config": {
+          "plugins": [
+            "@trivago/prettier-plugin-sort-imports"
+          ]
+        },
+        "input": [
+          "import { alpha, beta, gamma } from \"./a\";",
+          "import { b } from \"./b\";",
+          "import { cc } from \"./c\";"
+        ]
+      }
     },
     "importOrderImportAttributesKeyword": {
       "description": "The keyword that import attributes are written with. Only with `@trivago/prettier-plugin-sort-imports` in `plugins`.",
       "type": "string",
-      "enum": [
-        "assert",
-        "with",
-        "with-legacy"
+      "oneOf": [
+        {
+          "const": "assert",
+          "description": "`assert { type: \"json\" }`"
+        },
+        {
+          "const": "with",
+          "description": "`with { type: \"json\" }`"
+        },
+        {
+          "const": "with-legacy",
+          "description": "`with type: \"json\"`, the syntax of an early version of import attributes."
+        }
       ]
     },
     "importOrderExclude": {
@@ -466,7 +860,18 @@
     "importOrderCaseSensitive": {
       "description": "Whether to sort with regard to case. Only with `@ianvs/prettier-plugin-sort-imports` in `plugins`.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "config": {
+          "plugins": [
+            "@ianvs/prettier-plugin-sort-imports"
+          ]
+        },
+        "input": [
+          "import { b } from \"./Beta\";",
+          "import { a } from \"./alpha\";"
+        ]
+      }
     },
     "importOrderSafeSideEffects": {
       "description": "Patterns of the imports for side effects that can be sorted with the others. Only with `@ianvs/prettier-plugin-sort-imports` in `plugins`.",
@@ -478,16 +883,50 @@
     "organizeImportsSkipDestructiveCodeActions": {
       "description": "Whether to keep the imports that are not used. Only with `prettier-plugin-organize-imports` in `plugins`.",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "x-example": {
+        "config": {
+          "plugins": [
+            "prettier-plugin-organize-imports"
+          ]
+        },
+        "input": [
+          "import { used, unused } from \"./mod\";",
+          "",
+          "console.log(used);"
+        ]
+      }
     },
     "organizeImportsTypeOrder": {
       "description": "Where the specifiers that are types are put among the others. Only with `prettier-plugin-organize-imports` in `plugins`.",
       "type": "string",
-      "enum": [
-        "last",
-        "first",
-        "inline"
-      ]
+      "oneOf": [
+        {
+          "const": "last",
+          "description": "After the other specifiers."
+        },
+        {
+          "const": "first",
+          "description": "Before the other specifiers."
+        },
+        {
+          "const": "inline",
+          "description": "Sorted together with the other specifiers."
+        }
+      ],
+      "x-example": {
+        "config": {
+          "plugins": [
+            "prettier-plugin-organize-imports"
+          ]
+        },
+        "input": [
+          "import { zeta, type Alpha, beta, type Gamma } from \"./mod\";",
+          "",
+          "console.log(zeta, beta);",
+          "let x: Alpha | Gamma;"
+        ]
+      }
     },
     "tsconfig.jsx": {
       "description": "The `jsx` of the `compilerOptions` of the project, which says whether JSX uses the import of `React`. The plugin cannot read the tsconfig.json itself. Only with `prettier-plugin-organize-imports` in `plugins`.",
@@ -554,12 +993,21 @@
             "commentLineStrategy": {
               "description": "Whether a comment that fits on one line is written on one.",
               "type": "string",
-              "enum": [
-                "singleLine",
-                "multiline",
-                "keep"
-              ],
-              "default": "singleLine"
+              "default": "singleLine",
+              "oneOf": [
+                {
+                  "const": "singleLine",
+                  "description": "Write a comment that fits on one line on one line."
+                },
+                {
+                  "const": "multiline",
+                  "description": "Always write a comment on multiple lines."
+                },
+                {
+                  "const": "keep",
+                  "description": "Keep the comment on the lines it is written on."
+                }
+              ]
             },
             "separateTagGroups": {
               "description": "Whether to have an empty line between tags of different kinds.",
@@ -594,11 +1042,17 @@
             "lineWrappingStyle": {
               "description": "How the lines of a description are wrapped.",
               "type": "string",
-              "enum": [
-                "greedy",
-                "balance"
-              ],
-              "default": "greedy"
+              "default": "greedy",
+              "oneOf": [
+                {
+                  "const": "greedy",
+                  "description": "Fill each line as much as possible."
+                },
+                {
+                  "const": "balance",
+                  "description": "Make the lines about the same width."
+                }
+              ]
             },
             "descriptionTag": {
               "description": "Whether to put the description after `@description`.",
@@ -620,7 +1074,7 @@
       "default": true
     },
     "packageSortOrder": {
-      "description": "The package.json keys to put first when prettier-plugin-packagejson is listed in plugins.",
+      "description": "The keys to put first in `package.json` files. Only with `prettier-plugin-packagejson` in `plugins`.",
       "type": "array",
       "items": {
         "type": "string"
