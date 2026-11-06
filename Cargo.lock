@@ -837,7 +837,7 @@ dependencies = [
 
 [[package]]
 name = "dprint-plugin-bun"
-version = "0.0.4"
+version = "0.1.0"
 dependencies = [
  "bun_format",
  "bun_lint_driver",
