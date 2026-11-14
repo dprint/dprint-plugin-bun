@@ -152,7 +152,7 @@ function getCargoTomlBunVersion(text: string) {
 }
 
 async function getLatestTag() {
-  const client = new Octokit();
+  const client = new Octokit({ auth: Deno.env.get("GITHUB_TOKEN") });
   const tags = await client.paginate("GET /repos/{owner}/{repo}/tags", {
     owner: "oven-sh",
     repo: "bun",
@@ -172,7 +172,7 @@ async function getLatestTag() {
 
 // Bun's crates use unstable features, so they only build with Bun's toolchain
 async function updateRustToolchain(tag: string) {
-  const client = new Octokit();
+  const client = new Octokit({ auth: Deno.env.get("GITHUB_TOKEN") });
   const response = await client.rest.repos.getContent({
     owner: "oven-sh",
     repo: "bun",
