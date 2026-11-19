@@ -14,8 +14,8 @@ description = "JavaScript, TypeScript, JSON, CSS, GraphQL, YAML, Markdown, HTML,
 # No release has the formatter yet, so for now the commit is the one that added
 # it, which came after this release.
 [package.metadata.bun]
-version = "1.4.4"
-rev = "38afee6c84fcf48c0edb2466aa4b27d287a59c30"
+version = "1.4.5"
+rev = "a7733435cf40429e3b35c36072769df2052b80f1"
 
 [lib]
 crate-type = ["lib", "cdylib"]
